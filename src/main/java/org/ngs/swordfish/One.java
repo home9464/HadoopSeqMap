@@ -92,34 +92,38 @@ public class One
 		options.addOption(o);
 		CommandLineParser parser = new BasicParser();
 
-		String pathInput = ".";
-		String pathOutput = ".";
+		String localInputPath = ".";
+		String localOutputPath = ".";
 		String jobPath = null;
 		CommandLine line;
 		line = parser.parse(options, args);
 
-		pathInput = line.getOptionValue("i");
-		pathOutput = line.getOptionValue("o");
+		localInputPath = line.getOptionValue("i");
+		localOutputPath = line.getOptionValue("o");
 		
 		String currentDirectory = System.getProperty("user.dir");
 		String strippedDirectory = currentDirectory.replaceFirst(System.getProperty("user.home"),"");
 		
-		Path hdfsInputPath = new Path("/user/hadoop"+strippedDirectory+"/input"); 
-		Path hdfsOutputPath = new Path("/user/hadoop"+strippedDirectory+"/output"); 
-		Path hdfsTmpPath =new Path("/user/hadoop"+strippedDirectory+"/tmp"); 
+		String hdfsInputPath = "/user/hadoop"+strippedDirectory+"/input";
+		String hdfsOutputPath = "/user/hadoop"+strippedDirectory+"/output"; 
+		String hdfsTmpPath = "/user/hadoop"+strippedDirectory+"/tmp"; 
+				
+		//Path hdfsInputPath = new Path("/user/hadoop"+strippedDirectory+"/input"); 
+		//Path hdfsOutputPath = new Path("/user/hadoop"+strippedDirectory+"/output"); 
+		//Path hdfsTmpPath =new Path("/user/hadoop"+strippedDirectory+"/tmp"); 
 		
 		Configuration conf = new Configuration();
-		conf.set("JOB_WORKING_LOCAL_PATH","job/tests");
-		conf.set("JOB_OUTPUT_HDFS_PATH","/user/hadoop/tests/output");
+		conf.set("JOB_WORKING_LOCAL_PATH",strippedDirectory);
+		conf.set("JOB_OUTPUT_HDFS_PATH",hdfsOutputPath);
 		//long task_timeout_millsec = 259200000l; // 72 hours
 		//conf.setLong("mapreduce.task.timeout", task_timeout_millsec);
 		configureHadoop(conf,1);
 		
 		FileSystem fs = FileSystem.newInstance(conf);
-		fs.delete(hdfsOutputPath, true);
-		fs.delete(hdfsTmpPath, true);
+		fs.delete(new Path(hdfsOutputPath), true);
+		fs.delete(new Path(hdfsTmpPath), true);
 		
-		fs.copyFromLocalFile(new Path(pathInput), hdfsInputPath);
+		fs.copyFromLocalFile(new Path(localInputPath), new Path(hdfsInputPath));
 		
 		Job job = Job.getInstance(conf, "bwa");
 		job.setNumReduceTasks(0);
@@ -134,13 +138,13 @@ public class One
 		job.setOutputKeyClass(NullWritable.class);
 		job.setOutputValueClass(NullWritable.class);
 
-		FileInputFormat.addInputPath(job,hdfsInputPath );
-		FileOutputFormat.setOutputPath(job, hdfsTmpPath);
+		FileInputFormat.addInputPath(job,new Path(hdfsInputPath));
+		FileOutputFormat.setOutputPath(job, new Path(hdfsTmpPath));
 
 		job.waitForCompletion(true);
 		
 		//Local directory will be created automatically if not exist
-		fs.copyToLocalFile(hdfsOutputPath,new Path(currentDirectory,pathOutput));
+		fs.copyToLocalFile(new Path(hdfsOutputPath),new Path(currentDirectory,localOutputPath));
 		
 		//fs.delete(hdfsOutputPath, true);
 		//fs.delete(hdfsTmpPath, true);

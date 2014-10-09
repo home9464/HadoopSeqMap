@@ -24,7 +24,7 @@ public class OneMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 	 * The key is the full path of command file on DataNode. "/home/hadoop/job/1/A.cmd"
 	 * 
 	 * */
-	public void map(Text key, Text value, Context context) throws IOException 
+	public void map(Text key, Text value, Context context)
 	{
 		
 		//Key is the command file Path
@@ -35,14 +35,21 @@ public class OneMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 
 		//run the command file as a script
 		
-		String ret = Util.executeShellStdout(workingPath,cmdFileName);
-		
-		if (ret.startsWith("Exception") || ret.startsWith("Error")) {
-			throw new IOException(ret);
-		}
-		
 		Configuration conf = context.getConfiguration();
-		FileSystem fs = FileSystem.newInstance(conf);
+		FileSystem fs=null;
+		try
+		{
+			String ret = Util.executeShellStdout(workingPath,cmdFileName);
+			if (ret.startsWith("Exception") || ret.startsWith("Error")) {
+				throw new IOException(ret);
+			}
+			fs = FileSystem.newInstance(conf);
+		}
+		catch (IOException e)
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		// copy output file from DataNode's local disk to HDFS
 		
@@ -63,11 +70,19 @@ public class OneMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		
 		//copy remaining files to designated HDFS path for this job
 		Path dst = new Path(conf.get("JOB_OUTPUT_HDFS_PATH"));
-		fs.mkdirs(dst);
-		for(String output: allFiles)
+		try
 		{
-			//copy results from DataNode's local disk to HDFS
-			fs.copyFromLocalFile(new Path(output), dst);
+			fs.mkdirs(dst);
+			for(String output: allFiles)
+			{
+				//copy results from DataNode's local disk to HDFS
+				fs.copyFromLocalFile(new Path(output), dst);
+			}
+		}
+		catch (IOException e)
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		//delete results from DataNode's local disk
 		//Util.execute(String.format("rm -fr %s",workingPath));

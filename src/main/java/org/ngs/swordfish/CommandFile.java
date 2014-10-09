@@ -16,10 +16,7 @@ import org.apache.hadoop.fs.Path;
 public class CommandFile
 {
 	/**
-	 * parse the command file and get the list of input files which end with specific extension
-	 * 
-	 * or match full file name.
-	 * 
+	 * parse the command file and get the list of input files appeared in the command file.  
 	 * 
 	 * @param commandFile: the command file
 	 * @param allFiles: list of all files under current working directory
