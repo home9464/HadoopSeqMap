@@ -113,13 +113,14 @@ public class One
 		//Path hdfsTmpPath =new Path("/user/hadoop"+strippedDirectory+"/tmp"); 
 		
 		Configuration conf = new Configuration();
-		conf.set("JOB_WORKING_LOCAL_PATH",strippedDirectory);
+		conf.set("JOB_WORKING_LOCAL_PATH","task/"+strippedDirectory);
 		conf.set("JOB_OUTPUT_HDFS_PATH",hdfsOutputPath);
 		//long task_timeout_millsec = 259200000l; // 72 hours
 		//conf.setLong("mapreduce.task.timeout", task_timeout_millsec);
 		configureHadoop(conf,1);
 		
 		FileSystem fs = FileSystem.newInstance(conf);
+		fs.delete(new Path(hdfsInputPath), true);
 		fs.delete(new Path(hdfsOutputPath), true);
 		fs.delete(new Path(hdfsTmpPath), true);
 		

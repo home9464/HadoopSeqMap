@@ -111,6 +111,7 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 					allFiles.add(f.getPath().getName());
 				}
 				
+				//get the list of files that appear in the command from total files. 
 				List<String> inputs= CommandFile.getFiles(commandFile,allFiles);
 
 				inputFiles = new ArrayList<>();

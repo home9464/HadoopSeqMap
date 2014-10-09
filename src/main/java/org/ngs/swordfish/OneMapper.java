@@ -34,7 +34,6 @@ public class OneMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		String cmdFileName  = FilenameUtils.getName(commandFile);
 
 		//run the command file as a script
-		
 		Configuration conf = context.getConfiguration();
 		FileSystem fs=null;
 		try
@@ -51,22 +50,38 @@ public class OneMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			e.printStackTrace();
 		}
 		
+		//FIXME: collect output files only.
 		// copy output file from DataNode's local disk to HDFS
 		
 		//list all files under working directory
 		File[] ffiles = new File(workingPath).listFiles();		
 		List<String> allFiles = new ArrayList<>();
+		List<String> cmdFiles = new ArrayList<>();
 		for(File f:ffiles)
 		{
-			allFiles.add(f.getAbsolutePath());
+			if(f.getName().endsWith(".cmd"))
+			{
+				cmdFiles.add(f.getAbsolutePath());
+			}
+			else
+			{
+				allFiles.add(f.getAbsolutePath());
+			}
 		}
-		
 		//list all known input files
 		List<String> inputFiles = Arrays.asList(value.toString().split(" "));
 		
 		//exclude input files from all files, then remaining files are outputs
 		allFiles.remove(commandFile);
 		allFiles.removeAll(inputFiles);
+		
+		List<String> otherInputs = new ArrayList<>();
+		for (String c:cmdFiles)
+		{
+			otherInputs.addAll(CommandFile.getFiles(new Path(c),allFiles));
+		}
+		allFiles.removeAll(otherInputs);
+			
 		
 		//copy remaining files to designated HDFS path for this job
 		Path dst = new Path(conf.get("JOB_OUTPUT_HDFS_PATH"));
@@ -85,6 +100,6 @@ public class OneMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			e.printStackTrace();
 		}
 		//delete results from DataNode's local disk
-		//Util.execute(String.format("rm -fr %s",workingPath));
+		Util.execute(String.format("rm -fr %s",workingPath));
 	}
 }
