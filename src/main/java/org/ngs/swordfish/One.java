@@ -1,5 +1,6 @@
 package org.ngs.swordfish;
 import java.io.IOException;
+import java.nio.file.Files;
 
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
@@ -125,7 +126,10 @@ public class One
 		fs.delete(new Path(hdfsTmpPath), true);
 		
 		fs.copyFromLocalFile(new Path(localInputPath), new Path(hdfsInputPath));
-		
+
+		//TODO: no need for the splitted files on local disk
+		fs.delete(new Path(localInputPath),true);
+
 		Job job = Job.getInstance(conf, "bwa");
 		job.setNumReduceTasks(0);
 		job.setJarByClass(One.class);
