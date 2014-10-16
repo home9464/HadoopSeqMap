@@ -34,7 +34,7 @@
       	<forceJavacCompilerUse>true</forceJavacCompilerUse>
         <archive>
           <manifest>
-            <mainClass>org.ngs.swordfish.One</mainClass>
+            <mainClass>org.ngs.swordfish.Main</mainClass>
           </manifest>
         </archive>
         <descriptorRefs>

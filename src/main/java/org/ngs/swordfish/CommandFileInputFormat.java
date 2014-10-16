@@ -20,7 +20,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
 /**
  *
- * Process the command file
+ * Process (split) command file ends wth ".cmd"
  * 
  * */
 public class CommandFileInputFormat extends FileInputFormat<Text, Text>
@@ -53,6 +53,7 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 			if(fileName.endsWith(COMMAND_FILE_EXTENSION))
 			//if(FilenameUtils.getExtension(fileName).equalsIgnoreCase(COMMAND_FILE_EXTENSION))
 			{
+		    	 //hdfs://nn1:50017/user/hadoop/input/A_0000_R1.fq<PATH_SEPARATOR>hdfs://nn1:50017/user/hadoop/input/A_0000_R2.fq<PATH_SEPARATOR>A_0000
 				splits.add(new FileSplit(file.getPath(), 0, 0, null));
 			}
 		}
@@ -103,6 +104,7 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 					throws IOException, InterruptedException
 			{
 				FileSplit commandFileSplit = (FileSplit) arg0;
+		    	//hdfs://nn1:50017/user/hadoop/job/A/B/C/1.cmd
 				commandFile = commandFileSplit.getPath();
 				
 				List<String> allFiles = new ArrayList<>() ;
@@ -123,11 +125,27 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 				
 	    		conf = arg1.getConfiguration();
 				
-	    		String jobPath = conf.get("JOB_WORKING_LOCAL_PATH");
-	    		pathInputDN = pathHomeLocalDN + "/" + jobPath;
+	    		String HDFS_scheme = "hdfs:/.+?:\\d+/";
+	    		
+	    		
+	    		// "hdfs://nn1:50017/user/hadoop/job/A/B/C/1.cmd" -> "/user/hadoop/job/A/B/C/1.cmd" -> "/home/hadoop/job/A/B/C/1.cmd" 
+	    		//String hdfsHome = String.format("/user/%s/",System.getProperty("user.name"));
+	    		//String localHome = System.getProperty("user.home");
+	    		//String strippedPath = commandFile.toString().replaceAll(HDFS_scheme, "/").replaceFirst(hdfsHome,"/");
+	    		//pathInputDN = localHome + "/" + strippedPath;
+	    		
+	    		/**
+	    		 * HDFS:/user/hadoop/job/A/B/C/input/A_0000_1.cmd -> DN:/home/hadoop/job/A/B/C/
+	    		 * */
+	    		pathInputDN = basePath.getParent().toString().replaceAll(HDFS_scheme, "/").replaceFirst("/user/","/home/");
+	    		
+	    		//if exist
+	    		//new File(pathInputDN).delete();
 	    		
 	    		//create working directory on DataNode's local disk
-	    		new File(pathInputDN).mkdirs();
+	    		//new File(pathInputDN).mkdirs();
+	    		
+	    		
 			}
 
 			@Override
@@ -143,17 +161,16 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 					
 					//copy command file to DataNode
 					String pathCmdFileDataNode = Util.copyFromHdfsToDNLocalFile(fs,commandFile,pathDst);
+					
 					//copy input files to DataNode
 					for (Path p : inputFiles)
 					{
-						//"/PATH/A.bam /PATH/B.bam /PATH/C.bam" 
+						//"/PATH/A.bam /PATH/B.bam /PATH/C.bam"
 						sb.append(Util.copyFromHdfsToDNLocalFile(fs,p,pathDst) + " ");
 					}
 					
 			        k = new Text(pathCmdFileDataNode);
 					v = new Text(sb.toString().trim());
-			        //k = new Text("HELLO");
-					//v = new Text("WORLD");
 					processed = true;
 					return true;
 				}

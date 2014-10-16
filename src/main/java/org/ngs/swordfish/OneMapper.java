@@ -27,79 +27,88 @@ public class OneMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 	public void map(Text key, Text value, Context context)
 	{
 		
+		
 		//Key is the command file Path
 		String commandFile = key.toString();
-		
+		//"/home/<username>/A/B/C"
 		String workingPath  = FilenameUtils.getFullPathNoEndSeparator(commandFile);
-		String cmdFileName  = FilenameUtils.getName(commandFile);
-
-		//run the command file as a script
-		Configuration conf = context.getConfiguration();
-		FileSystem fs=null;
+		
+		String strippedPath = workingPath.replaceFirst(System.getProperty("user.home"),"");
+		//"/job/hadoop@scheduler/1/input/"
+		
 		try
 		{
+			String cmdFileName  = FilenameUtils.getName(commandFile);
+
+			//run the command file as a script
+			Configuration conf = context.getConfiguration();
+			FileSystem fs=null;
 			String ret = Util.executeShellStdout(workingPath,cmdFileName);
 			if (ret.startsWith("Exception") || ret.startsWith("Error")) {
 				throw new IOException(ret);
 			}
 			fs = FileSystem.newInstance(conf);
-		}
-		catch (IOException e)
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 		
-		//FIXME: collect output files only.
-		// copy output file from DataNode's local disk to HDFS
+			//FIXME: collect output files only.
+			// copy output file from DataNode's local disk to HDFS
 		
-		//list all files under working directory
-		File[] ffiles = new File(workingPath).listFiles();		
-		List<String> allFiles = new ArrayList<>();
-		List<String> cmdFiles = new ArrayList<>();
-		for(File f:ffiles)
-		{
-			if(f.getName().endsWith(".cmd"))
+			//list all files under working directory
+			File[] ffiles = new File(workingPath).listFiles();		
+			List<String> allFiles = new ArrayList<>();
+			List<String> cmdFiles = new ArrayList<>();
+			for(File f:ffiles)
 			{
-				cmdFiles.add(f.getAbsolutePath());
+				if(f.getName().endsWith(".cmd"))
+				{
+					cmdFiles.add(f.getAbsolutePath());
+				}
+				else
+				{
+					allFiles.add(f.getAbsolutePath());
+				}
 			}
-			else
+			//list all known input files
+			List<String> inputFiles = Arrays.asList(value.toString().split(" "));
+		
+			//exclude input files from all files, then remaining files are outputs
+			allFiles.remove(commandFile);
+			allFiles.removeAll(inputFiles);
+		
+			List<String> otherInputs = new ArrayList<>();
+			for (String c:cmdFiles)
 			{
-				allFiles.add(f.getAbsolutePath());
+				otherInputs.addAll(CommandFile.getFiles(new Path(c),allFiles));
 			}
-		}
-		//list all known input files
-		List<String> inputFiles = Arrays.asList(value.toString().split(" "));
-		
-		//exclude input files from all files, then remaining files are outputs
-		allFiles.remove(commandFile);
-		allFiles.removeAll(inputFiles);
-		
-		List<String> otherInputs = new ArrayList<>();
-		for (String c:cmdFiles)
-		{
-			otherInputs.addAll(CommandFile.getFiles(new Path(c),allFiles));
-		}
-		allFiles.removeAll(otherInputs);
+			allFiles.removeAll(otherInputs);
 			
 		
-		//copy remaining files to designated HDFS path for this job
-		Path dst = new Path(conf.get("JOB_OUTPUT_HDFS_PATH"));
-		try
-		{
-			fs.mkdirs(dst);
+			//copy remaining files to designated HDFS path for this job
+		
+			// "/home/hadoop/job/hadoop@scheduler/1" -> "/job/hadoop@scheduler/1"
+			
+		
+			//output dir on HDFS, "/user/<username>/A/B/C/output"
+			//"/user/hadoop/job/hadoop@scheduler/1/input/A_100k_0003_R2.fastq.gz"
+
+			Path pathOutputHdfs = new Path(String.format("/user/%s/%s/output/", System.getProperty("user.name"),strippedPath));
+		 
+			fs.mkdirs(pathOutputHdfs);
 			for(String output: allFiles)
 			{
 				//copy results from DataNode's local disk to HDFS
-				fs.copyFromLocalFile(new Path(output), dst);
+				fs.copyFromLocalFile(new Path(output), pathOutputHdfs);
 			}
+			
 		}
 		catch (IOException e)
 		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		//delete results from DataNode's local disk
-		Util.execute(String.format("rm -fr %s",workingPath));
+		finally
+		{
+			Util.execute(String.format("rm -fr %s",workingPath));
+		}
+
 	}
 }
