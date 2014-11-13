@@ -35,59 +35,12 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 public class Util
 {
 
-	private final static String separator = "_";
-
-	public static Map<String,String> pairFastq(List<String> fastqs) throws UnknownFormatFlagsException
+	public static String getCommonPrefix(String s1,String s2)
 	{
-		Map<String,String> rets = new HashMap<>();
-		for (String qs: fastqs)
-		{
-			
-			String s = FilenameUtils.getName(qs);
-
-			String sample = ""; 
-			String lane = ""; 
-			String remain = ""; 
-			
-			String[] parts = s.split(separator);
-			if(parts.length ==3)
-			{
-				sample = parts[0]; 
-				lane = parts[1]; 
-				remain = parts[2]; 
-			}
-			else if(parts.length ==2)
-			{
-				sample = parts[0]; 
-				remain = parts[1]; 
-			}
-			else
-			{
-				//System.out.println("illegal format");
-				throw new UnknownFormatFlagsException(s);
-			}
-			
-			String k = sample+lane;
-			
-			if(rets.containsKey(k))
-			{
-				//make sure in the correct order as "A_R1.fq,A_R2.fq", not "A_R2.fq,A_R1.fq"  
-				if(rets.get(k).matches(".*_R?2.f(ast)?q(.gz)?"))  //it is the R2
-				{
-					rets.put(k, qs+","+rets.get(k));
-				}
-				else
-				{
-					rets.put(k, rets.get(k)+","+qs);
-				}
-			}
-			else
-			{
-				rets.put(k,qs);
-			}
-		}
-		return rets;
-		
+		String[] sz = new String[2];
+		sz[0]=s1;
+		sz[1]=s2;
+		return getCommonPrefix(sz);
 	}
 
 	public static String getCommonPrefix(List<String> strings)
@@ -132,25 +85,6 @@ public class Util
 	}
 
 	
-	public static String copyFromHdfsToDNLocalFile(FileSystem fs,Path pathSrc,Path pathDst)
-			throws IOException
-	{
-		File fDir = new File(pathDst.toUri().toString());
-		if(!fDir.exists())
-		{
-			fDir.mkdirs();
-		}
-		String HDFS_scheme = "hdfs:/.+?:\\d+/";
-		Path pathNormalized = new Path(pathSrc.toString().replaceAll(HDFS_scheme, "/"));
-		//File temp_data_file = File.createTempFile(pathSrc.getName(), "",new File(pathDst.getName()));
-		// File temp_data_file =
-		// File.createTempFile(some_path.getName(),"");
-		//temp_data_file.deleteOnExit();
-		fs.copyToLocalFile(false,pathNormalized, pathDst,true);
-		
-		return pathDst+"/"+pathSrc.getName();
-	}
-
 	public static void searchExecutableScript(String[] appPaths)
 	{
 		/*
@@ -402,56 +336,4 @@ public class Util
 	}
 
 	
-	public static String combineVcfFile(Path pathSrc)
-	{
-		/**
-		 * #!/usr/bin/python
-import argparse,itertools,glob,os,re,subprocess
-if __name__=='__main__':
-    """
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("-k","--gatk", help="The full path to GATK's jar file")
-    parser.add_argument("-g","--genome", help="The full path to reference genome FASTA file")
-    parser.add_argument("-m","--merge", help="The merge oprion, could be UNIQUIFY, ")
-    parser.add_argument("-d","--delete",action="store_false", help="delete the original files after merging")
-    args = parser.parse_args()
-
-    """
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("INPUT",help="The input path to splitted VCF files")
-    parser.add_argument("OUTPUT",help="The output path to merged VCF files")
-    args = parser.parse_args()
-    chromosomes = [0]*25
-    fileNamePattern=re.compile('(.*).chr([0-9xymXYM]).vcf$')
-    for root,dirs,files in os.walk(args.INPUT):
-        for f in files:
-            m = fileNamePattern.match(f)
-            if m:
-                sampleName,chrIndex = m.groups(0)
-                #print chrIndex
-                ff = os.path.join(root,f)
-                if chrIndex.upper()=='X':
-                    chromosomes[22] = ff
-                elif chrIndex.upper()=='Y':
-                    chromosomes[23] = ff
-                elif chrIndex.upper()=='M':
-                    chromosomes[24] = ff
-                else:
-                    chromosomes[int(chrIndex)-1] = ff
-    input_Vcfs = ' --variant '+' --variant '.join(list(filter(lambda x: x!=0,chromosomes)))
-    #mem_mb= psutil.avail_phymem()/(1024*1024)
-    mem_mb= 1024
-    path_to_gatk="~/bio/app/gatk/3.1-1/GenomeAnalysisTK.jar"
-    path_to_ref="~/bio/data/fasta/hg19/hg19.fa"
-    merge_option = 'UNIQUIFY'
-    vcf_out = "%s.vcf" % sampleName
-    cmd = "java -Xms%dm -jar %s -T CombineVariants -R %s -genotypeMergeOptions %s %s -o %s/%s" % (mem_mb,path_to_gatk, path_to_ref,merge_option,input_Vcfs,args.OUTPUT,vcf_out)
-    subprocess.check_call(cmd,shell=True)
-
-		 * 
-		 * */
-		return "";
-	}
 }

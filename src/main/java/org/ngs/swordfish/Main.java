@@ -1,6 +1,7 @@
 package org.ngs.swordfish;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.List;
 
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
@@ -31,7 +32,9 @@ public class Main
 		long task_timeout_millsec = 259200000l; // 72 hours
 		
 		int memoryMbAvailable = (int) (ClusterStats.getMemoryMbDN() * ratio);
-		System.out.println("Memory:"+String.valueOf(memoryMbAvailable)+"MB,"+"CPU:"+ClusterStats.getNumCpuCoreDN());
+		
+		//System.out.println("Memory:"+String.valueOf(memoryMbAvailable)+"MB,"+"CPU:"+ClusterStats.getNumCpuCoreDN());
+		
 		// int numContainersPerNode = memoryMbAvailable /
 		// minMemoryMbPerContainer;
 
@@ -52,22 +55,35 @@ public class Main
 
 		// Amount of total physical memory in a DataNode that can be allocated
 		// for containers.
+		/*
 		conf.setInt("yarn.nodemanager.resource.memory-mb", memoryMbAvailable);
+		System.out.println("yarn.nodemanager.resource.memory-mb:"+String.valueOf(memoryMbAvailable));
 
-		// Memory, max/mim allocation for every container request at the RM
+		// Memory, max/min allocation for every container request at the RM
 		conf.setInt("yarn.scheduler.maximum-allocation-mb", memoryMbAvailable);
 		conf.setInt("yarn.scheduler.minimum-allocation-mb", (int) (memoryMbPerContainer));
+		
+		System.out.println("yarn.scheduler.maximum-allocation-mb:"+String.valueOf(memoryMbAvailable));
+		System.out.println("yarn.scheduler.minimum-allocation-mb:"+String.valueOf((int) (memoryMbPerContainer)));
+		
 
 		// CPU, max/mim allocation for every container request at the RM
 		conf.setInt("yarn.scheduler.maximum-allocation-vcores", ClusterStats.getNumCpuCoreDN());
 		conf.setInt("yarn.scheduler.minimum-allocation-vcores", numCpuCoresPerContainer);
+		
+		System.out.println("yarn.scheduler.maximum-allocation-vcores:"+String.valueOf(ClusterStats.getNumCpuCoreDN()));
+		System.out.println("yarn.scheduler.minimum-allocation-vcores:"+String.valueOf((int) (numCpuCoresPerContainer)));
 
 		// Memory, max/mim allocation for every container request at the RM
 		conf.setInt("mapreduce.map.memory.mb", memoryMbPerContainer);
 		conf.setInt("mapreduce.reduce.memory.mb", memoryMbAvailable);
+		System.out.println("mapreduce.map.memory.mb:"+String.valueOf(memoryMbPerContainer));
+		System.out.println("mapreduce.reduce.memory.mb:"+String.valueOf(memoryMbAvailable));
 
+		
 		conf.setInt("mapreduce.map.java.opts':'-Xmx%dm",mapreduce_map_java_opts);
 		conf.setInt("mapreduce.reduce.java.opts':'-Xmx%dm",mapreduce_reduce_java_opts);
+		*/
 		
 	}
 	public static void main(String[] args)
@@ -79,7 +95,7 @@ public class Main
 		Option o = OptionBuilder.withArgName( "output directory" ).hasArg().isRequired() 
 				.withDescription("Output folder for this job" ).create( "o" );
 
-
+		
 		Options options = new Options();
 		options.addOption(i);
 		options.addOption(o);
@@ -87,19 +103,17 @@ public class Main
 
 		String localInputPath = ".";
 		String localOutputPath = ".";
-		String jobPath = null;
 
 		String currentDirectory = System.getProperty("user.dir");
 		// "$HOME/A/B/C" -> "/A/B/C" 
 		String strippedDirectory = currentDirectory.replaceFirst(System.getProperty("user.home"),"");
 		
-		String hdfsInputPath = "/user/hadoop"+strippedDirectory+"/input";
-		String hdfsOutputPath = "/user/hadoop"+strippedDirectory+"/output"; 
-		String hdfsTmpPath = "/user/hadoop"+strippedDirectory+"/tmp"; 
+		String hdfsHome = String.format("/user/%s",System.getProperty("user.name"));
+		
+		String hdfsInputPath = hdfsHome+strippedDirectory+"/input";
+		String hdfsOutputPath = hdfsHome+strippedDirectory+"/output"; 
+		String hdfsTmpPath = hdfsHome+strippedDirectory+"/tmp"; 
 
-		//Path hdfsInputPath = new Path("/user/hadoop"+strippedDirectory+"/input"); 
-		//Path hdfsOutputPath = new Path("/user/hadoop"+strippedDirectory+"/output"); 
-		//Path hdfsTmpPath =new Path("/user/hadoop"+strippedDirectory+"/tmp"); 
 		CommandLine line;
 		Configuration conf = new Configuration();
 		configureHadoop(conf,1);
@@ -112,20 +126,29 @@ public class Main
 			localOutputPath = line.getOptionValue("o");
 					
 			fs = FileSystem.newInstance(conf);
+			//fs.delete(new Path(hdfsHome+strippedDirectory), true);
+			
+			//String splitsPath = localInputPath+"/splitted";
+			//InputSplitter splitter = new InputSplitter(localInputPath,splitsPath);
+			//splitter.split();
+			
+			//copy splitted files from local Master to HDFS
+			//fs.copyFromLocalFile(new Path(splitsPath), new Path(hdfsInputPath));
+			
 			fs.copyFromLocalFile(new Path(localInputPath), new Path(hdfsInputPath));
+			
+			//delete splitted files from local Master
+			//fs.delete(new Path(splitsPath),true);
 
-			//TODO: no need for the splitted files on local disk
-			fs.delete(new Path(localInputPath),true);
-
-			Job job = Job.getInstance(conf, "bwa");
+			Job job = Job.getInstance(conf, "HTS");
 			job.setNumReduceTasks(0);
 			job.setJarByClass(Main.class);
 
 			job.setInputFormatClass(CommandFileInputFormat.class);
 			// job.setOutputFormatClass(NullOutputFormat.class);
 
-			job.setMapperClass(OneMapper.class);
-			job.setReducerClass(NoOutputReducer.class);
+			job.setMapperClass(BaseMapper.class);
+			job.setReducerClass(BaseReducer.class);
 
 			job.setOutputKeyClass(NullWritable.class);
 			job.setOutputValueClass(NullWritable.class);
@@ -136,7 +159,9 @@ public class Main
 			job.waitForCompletion(true);
 		
 			//Local directory will be created automatically if not exist
-			fs.copyToLocalFile(new Path(hdfsOutputPath),new Path(currentDirectory,localOutputPath));
+			//fs.copyToLocalFile(new Path(hdfsOutputPath),new Path(currentDirectory,localOutputPath));
+			fs.copyToLocalFile(false,new Path(hdfsOutputPath),new Path(currentDirectory,localOutputPath),true);
+			
 		}
 		catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -146,11 +171,17 @@ public class Main
 		{
 			try 
 			{
-				fs.delete(new Path(hdfsInputPath), true);
-				fs.delete(new Path(hdfsOutputPath), true);
-				fs.delete(new Path(hdfsTmpPath), true);
+				//delete all job files on DataNode
+			    for (String s: ClusterStats.getDatanodes())
+			    {
+			    	Util.execute(String.format("ssh %s 'rm -fr job' ",s));
+			    }
+				//delete all job files on HDFS
+				fs.delete(new Path(hdfsHome+strippedDirectory), true);
 				
-			} catch (IllegalArgumentException | IOException e) 
+			} 
+			//catch (IllegalArgumentException | IOException e) 
+			catch (Exception e) 
 			{
 				// TODO Auto-generated catch block
 				e.printStackTrace();

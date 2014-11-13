@@ -20,11 +20,11 @@ public class ClusterStats
     static
 	{
 		Configuration conf = new Configuration(); 
-		YarnClient	yarnClient = YarnClient.createYarnClient();
-		yarnClient.init(conf);
-		yarnClient.start();
 		try
 		{
+			YarnClient	yarnClient = YarnClient.createYarnClient();
+			yarnClient.init(conf);
+			yarnClient.start();
 			//YarnClusterMetrics metrics = yarnClient.getYarnClusterMetrics();
 		    //YarnClusterMetrics clusterMetrics = yarnClient.getYarnClusterMetrics();
 			//numDataNodes = clusterMetrics.getNumNodeManagers();
@@ -60,6 +60,10 @@ public class ClusterStats
 		}
 	}
 	
+    public static List<String> getDatanodes()
+    {
+    	return datanodes;
+    }
 	private static int getMemoryMb(String[] commands)
 	{
 		int MB = 1024;
@@ -107,9 +111,9 @@ public class ClusterStats
 	public static int getMemoryMbDN()
 	{
 		String dn1 = datanodes.get(0);
-		String[] commands={String.format("ssh -t %s \"cat /proc/meminfo\"",dn1),
-				String.format("ssh -t %s \"vmstat -s\"",dn1),
-				String.format("ssh -t %s \"free -m\"",dn1)
+		String[] commands={String.format("ssh %s \"cat /proc/meminfo \" 2>/dev/null",dn1),
+				String.format("ssh %s \"vmstat -s\" 2>/dev/null",dn1),
+				String.format("ssh %s \"free -m\" 2>/dev/null",dn1)
 				};
 		return getMemoryMb(commands);
 	}	
@@ -120,7 +124,7 @@ public class ClusterStats
      * */
 	public static int getNumCpuCore()
 	{
-		String command = "grep -c ^processor /proc/cpuinfo";
+		String command = "grep -c ^processor /proc/cpuinfo 2>/dev/null";
 		return Integer.parseInt(Util.executeStdout(command));
 	}
     /**
@@ -129,7 +133,7 @@ public class ClusterStats
 	public static int getNumCpuCoreDN()
 	{
 		String dn1 = datanodes.get(0);
-		String command = String.format("ssh -t %s \"grep -c ^processor /proc/cpuinfo\"",dn1);
+		String command = String.format("ssh -t %s \"grep -c ^processor /proc/cpuinfo\" 2>/dev/null",dn1);
 		return Integer.parseInt(Util.executeStdout(command));
 	}
 	

@@ -19,7 +19,10 @@ public class App
 		//Configuration conf = new Configuration();
 		//FileSystem fs = FileSystem.newInstance(conf);
 		//fs.delete(new Path(localInputPath),true);
-		System.out.println(System.getProperty("user.home"));
-		System.out.println(FilenameUtils.getFullPath("/A/B/C/D/"));
+		//System.out.println(System.getProperty("user.home"));
+		//System.out.println(FilenameUtils.getFullPath("/A/B/C/D/"));
+		System.out.println(FilenameUtils.getPath("/A/B/C/D/"));
+		System.out.println(FilenameUtils.getPath("A/B/C/D"));
+		System.out.println(FilenameUtils.getFullPathNoEndSeparator("/A/B/C/D"));
     }
 }
