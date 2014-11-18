@@ -70,12 +70,10 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 
 			private Text k;
 			private Text v;
-			private Path commandFile;
-			private List<Path> inputFiles;
-			private String jobFolderName;
 			private boolean processed = false;
-			Configuration conf;
-			//private FileSystem fs;
+			private String commandFileName;
+			private Path hdfsJobPath;
+			private Configuration conf;
 
 			@Override
 			public void close() throws IOException
@@ -104,56 +102,15 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 			public void initialize(InputSplit arg0, TaskAttemptContext arg1)
 					throws IOException, InterruptedException
 			{
+		    	/* hdfs://nn1:50017/user/hadoop/job/hadoop@scheduler/1/input/0002/1.cmd */
+				
 				FileSplit commandFileSplit = (FileSplit) arg0;
-		    	//hdfs://nn1:50017/user/hadoop/job/A/B/C/1.cmd
-				// /user/hadoop/job/hadoop@scheduler/1/input/A_0000.cmd
-				commandFile = commandFileSplit.getPath();
-				
-				
-				// "1.cmd" -> "1"
-				jobFolderName = FilenameUtils.getBaseName(commandFile.getName());
-				
-				List<String> allFiles = new ArrayList<>() ;
-				for (FileStatus f : listStatus(arg1))
-				{
-					allFiles.add(f.getPath().getName());
-				}
-				
-				//get the list of files that appear in the command from total files. 
-				List<String> inputs= CommandFile.getFiles(commandFile,allFiles);
-
-				inputFiles = new ArrayList<>();
-				// "/user/hadoop/job/hadoop@scheduler/1/input/"
-				Path basePath = commandFile.getParent();
-				for (String s:inputs)
-				{
-					inputFiles.add(new Path(basePath,s));
-				}
-				
 	    		conf = arg1.getConfiguration();
-				
-	    		String HDFS_scheme = "hdfs:/.+?:\\d+/";
 	    		
-	    		
-	    		// "hdfs://nn1:50017/user/hadoop/job/A/B/C/1.cmd" -> "/user/hadoop/job/A/B/C/1.cmd" -> "/home/hadoop/job/A/B/C/1.cmd" 
-	    		//String hdfsHome = String.format("/user/%s/",System.getProperty("user.name"));
-	    		//String localHome = System.getProperty("user.home");
-	    		//String strippedPath = commandFile.toString().replaceAll(HDFS_scheme, "/").replaceFirst(hdfsHome,"/");
-	    		//pathInputDN = localHome + "/" + strippedPath;
-	    		
-	    		 // HDFS:/user/hadoop/job/A/B/C/input/A_0000_1.cmd -> DataNode:/home/hadoop/job/A/B/C/A_0000_1/
-	    		pathInputDN = basePath.getParent().toString().
-	    										replaceAll(HDFS_scheme, "/").
-	    										replaceFirst("/user/","/home/")+"/"+jobFolderName+"/";
-	    		
-	    		
-	    		//if exist
-	    		//new File(pathInputDN).delete();
-	    		
-	    		//create working directory on DataNode's local disk
-	    		//new File(pathInputDN).mkdirs();
-	    		
-	    		
+				commandFileName = commandFileSplit.getPath().getName();
+
+	    		//base path to the command file in the HDFS. "hdfs://nn1:50017/user/hadoop/job/hadoop@scheduler/1/input/0002/"
+				hdfsJobPath = commandFileSplit.getPath().getParent();
 			}
 
 			@Override
@@ -163,22 +120,28 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 				{
 					StringBuffer sb = new StringBuffer();
 					//The local path on DataNode
-					Path pathDst = new Path(pathInputDN);
-					
+		    		String HDFS_scheme = "hdfs:/.+?:\\d+/";
+		    		
+		    		
+		    		// "hdfs://nn1:50017/user/hadoop/job/A/B/C/1.cmd" -> "/user/hadoop/job/A/B/C/1.cmd" -> "/home/hadoop/job/A/B/C/1.cmd" 
+		    		//String hdfsHome = String.format("/user/%s/",System.getProperty("user.name"));
+		    		//String localHome = System.getProperty("user.home");
+		    		//String strippedPath = commandFile.toString().replaceAll(HDFS_scheme, "/").replaceFirst(hdfsHome,"/");
+		    		//pathInputDN = localHome + "/" + strippedPath;
+		    		
+		    		 // HDFS:/user/hadoop/job/A/B/C/input/A_0000_1.cmd -> DataNode:/home/hadoop/job/A/B/C/A_0000_1/
+		    		
+		    		/* hdfs://nn1:50017/user/hadoop/job/hadoop@scheduler/1/input/0002 -> /home/hadoop/job/hadoop@scheduler/1/input/0002 */
+		    		
+		    		String localJobPath = hdfsJobPath.toString().
+							replaceAll(HDFS_scheme, "/").
+							replaceFirst("/user/","/home/");
+							
 					FileSystem fs = FileSystem.get(conf);
+					fs.copyToLocalFile(hdfsJobPath, new Path(localJobPath));
 					
-					//copy command file from HDFS to DataNode
-					String pathCmdFileDataNode = copyFromHdfsToDNLocalFile(fs,commandFile,pathDst);
-					
-					//copy input files from HDFS to DataNode
-					for (Path p : inputFiles)
-					{
-						//"/PATH/A.bam /PATH/B.bam /PATH/C.bam"
-						sb.append(copyFromHdfsToDNLocalFile(fs,p,pathDst) + " ");
-					}
-					
-			        k = new Text(pathCmdFileDataNode);
-					v = new Text(sb.toString().trim());
+			        k = new Text(localJobPath+"/"+commandFileName);
+					v = new Text("");
 					processed = true;
 					return true;
 				}

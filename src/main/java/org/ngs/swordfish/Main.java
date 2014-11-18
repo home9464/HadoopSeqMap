@@ -153,6 +153,7 @@ public class Main
 			job.setOutputKeyClass(NullWritable.class);
 			job.setOutputValueClass(NullWritable.class);
 
+			FileInputFormat.setInputDirRecursive(job, true);
 			FileInputFormat.addInputPath(job,new Path(hdfsInputPath));
 			FileOutputFormat.setOutputPath(job, new Path(hdfsTmpPath));
 
@@ -174,10 +175,10 @@ public class Main
 				//delete all job files on DataNode
 			    for (String s: ClusterStats.getDatanodes())
 			    {
-			    	Util.execute(String.format("ssh %s 'rm -fr job' ",s));
+			    	//Util.execute(String.format("ssh %s 'rm -fr job' ",s));
 			    }
 				//delete all job files on HDFS
-				fs.delete(new Path(hdfsHome+strippedDirectory), true);
+				//fs.delete(new Path(hdfsHome+strippedDirectory), true);
 				
 			} 
 			//catch (IllegalArgumentException | IOException e) 

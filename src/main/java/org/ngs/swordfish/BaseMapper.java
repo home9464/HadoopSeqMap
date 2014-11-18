@@ -23,25 +23,29 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 	/**
 	 * The key is the full path of command file on DataNode. "/home/hadoop/job/1/A.cmd"
 	 * 
+	 * ~/job/hadoop@scheduler/1/input/1:
 	 * */
 	public void map(Text key, Text value, Context context)
 	{
-		
+		/* commandFile: /home/hadoop/job/hadoop@scheduler/1/input/0002/1.cmd */
 		String commandFile = key.toString();
 
-		//the local path of command file on DataNode -> "/home/<user>/A/B/C" 
+		/* workingPath: /home/hadoop/job/hadoop@scheduler/1/input/0002 */
 		String workingPath  = FilenameUtils.getFullPathNoEndSeparator(commandFile);
 		
-		// "/home/user/A/B/C" -> "A/B/C"
+		//strippedPath: job/hadoop@scheduler/1/input/0002
 		String strippedPath = workingPath.replaceFirst(System.getProperty("user.home"),"");
+
+		/* 1.cmd */
+		String commandFileName  = FilenameUtils.getName(commandFile);
+
 		
 		try
 		{
-			String cmdFileName  = FilenameUtils.getName(commandFile);
 
 			//run the command file as a script
 			Configuration conf = context.getConfiguration();
-			String ret = Util.executeShellStdout(workingPath,cmdFileName);
+			String ret = Util.executeShellStdout(workingPath,commandFileName);
 			if (ret.startsWith("Exception") || ret.startsWith("Error")) 
 			{
 				throw new IOException(ret);
@@ -72,11 +76,11 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 				}
 			}
 			//list all known input files
-			List<String> inputFiles = Arrays.asList(value.toString().split(" "));
+			//List<String> inputFiles = Arrays.asList(value.toString().split(" "));
 		
 			//exclude input files from all files, then remaining files are outputs
-			allFiles.remove(commandFile);
-			allFiles.removeAll(inputFiles);
+			//allFiles.remove(commandFile);
+			//allFiles.removeAll(inputFiles);
 			
 			/*
 			List<String> otherInputs = new ArrayList<>();
@@ -87,26 +91,19 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			allFiles.removeAll(otherInputs);
 			*/
 			
+			/* /user/hadoop/job/hadoop@scheduler/1/output/0002 */
+			String outputPath = String.format("/user/%s/%s", 
+					System.getProperty("user.name"),
+					strippedPath).replace("/input/", "/output/");
 			
-			//copy remaining files to designated HDFS path for this job
-		
-			// "/home/hadoop/job/hadoop@scheduler/1" -> "/job/hadoop@scheduler/1"
+			Path hdfsOutputPath = new Path(outputPath);
 			
-		
-			//output dir on HDFS, "/user/<username>/A/B/C/output"
-			//"/user/hadoop/job/hadoop@scheduler/1/input/A_100k_0003_R2.fastq.gz"
-
-			// strippedPath = "job/hadoop@scheduler/1/A_0003"
-			// outputPath = "/user/hadoop/job/hadoop@scheduler/1/output/"
-
-			//Path pathOutputHdfs = new Path(String.format("/user/%s/%s/output/", System.getProperty("user.name"),strippedPath));
-			Path pathOutputHdfs = new Path(String.format("/user/%s/%s/output/", System.getProperty("user.name"),FilenameUtils.getPath(strippedPath)));
-		 
-			fs.mkdirs(pathOutputHdfs);
+			fs.mkdirs(hdfsOutputPath);
+			
 			for(String output: allFiles)
 			{
 				//copy results from DataNode's local disk to HDFS
-				fs.copyFromLocalFile(new Path(output), pathOutputHdfs);
+				fs.copyFromLocalFile(new Path(output), hdfsOutputPath);
 			}
 			
 		}
