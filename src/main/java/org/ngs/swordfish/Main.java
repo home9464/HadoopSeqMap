@@ -173,12 +173,12 @@ public class Main
 			try 
 			{
 				//delete all job files on DataNode
-			    for (String s: ClusterStats.getDatanodes())
-			    {
+			    //for (String s: ClusterStats.getDatanodes())
+			    //{
 			    	//Util.execute(String.format("ssh %s 'rm -fr job' ",s));
-			    }
+			    //}
 				//delete all job files on HDFS
-				//fs.delete(new Path(hdfsHome+strippedDirectory), true);
+				fs.delete(new Path(hdfsHome+strippedDirectory), true);
 				
 			} 
 			//catch (IllegalArgumentException | IOException e) 
