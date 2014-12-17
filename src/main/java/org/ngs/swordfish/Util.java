@@ -50,6 +50,11 @@ public class Util
 		return getCommonPrefix(sz);
 	}
 
+	/**
+	 * get the common prefix of strings
+	 * 
+	 * { "A_1.txt","A_2.txt" } -> "A_"
+	 * */
 	public static String getCommonPrefix(String[] strings)
 	{
 		String prefix = new String();

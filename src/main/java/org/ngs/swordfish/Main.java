@@ -20,9 +20,10 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class Main
 {
+	private static String statusUrl = "http://192.168.1.121:3000/job";
+	
 	public Main()
 	{
-		
 	}
 	
 	public static void configureHadoop(Configuration conf,int numContainersPerNode)
@@ -52,7 +53,8 @@ public class Main
 		// http://docs.hortonworks.com/HDPDocuments/HDP2/HDP-2.0.6.0/bk_installing_manually_book/content/rpm-chap1-11.html
 
 		conf.setLong("mapreduce.task.timeout", task_timeout_millsec);
-
+		//conf.set("mapreduce.job.end-notification.url","");
+		
 		// Amount of total physical memory in a DataNode that can be allocated
 		// for containers.
 		/*
@@ -86,6 +88,56 @@ public class Main
 		*/
 		
 	}
+	
+	private static void updateStatus(Job j)
+	{
+		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
+		if (statusUrl != null)
+		{
+			try {
+				String jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobMessage\":\"%s\"}",
+					j.getJobID().toString(),
+					j.getJobState().toString(),
+					"Running job on cluster");
+			
+				Util.execute(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+			
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			}
+		}
+	}
+	private static void updateStatus(String jobId,String jobState, String jobProgress,String jobMessage)
+	{
+		if (statusUrl != null)
+		{
+			//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
+			String jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobProgress\":\"%s\",\"jobMessage\":\"%s\"}",
+					jobId,
+					jobState,
+					jobProgress,
+					jobMessage);
+			Util.execute(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+		}
+	}
+
+	private static void updateStatus(String jobId,String jobState, String jobMessage)
+	{
+		if (statusUrl != null)
+		{
+			//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
+			String jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobMessage\":\"%s\"}",
+					jobId,
+					jobState,
+					jobMessage);
+			Util.execute(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+		}
+	}
+
 	public static void main(String[] args)
 	{
 		
@@ -95,15 +147,18 @@ public class Main
 		Option o = OptionBuilder.withArgName( "output directory" ).hasArg().isRequired() 
 				.withDescription("Output folder for this job" ).create( "o" );
 
+		Option n = OptionBuilder.withArgName( "job name/id" ).hasArg().isRequired() 
+				.withDescription("Job name" ).create( "n" );
 		
 		Options options = new Options();
 		options.addOption(i);
 		options.addOption(o);
+		options.addOption(n);
 		CommandLineParser parser = new BasicParser();
 
 		String localInputPath = ".";
 		String localOutputPath = ".";
-
+		
 		String currentDirectory = System.getProperty("user.dir");
 		// "$HOME/A/B/C" -> "/A/B/C" 
 		String strippedDirectory = currentDirectory.replaceFirst(System.getProperty("user.home"),"");
@@ -118,29 +173,26 @@ public class Main
 		Configuration conf = new Configuration();
 		configureHadoop(conf,1);
 		FileSystem fs=null;
-		
+		String jobId = null;
 		try
 		{
 			line = parser.parse(options, args);
 			localInputPath = line.getOptionValue("i");
 			localOutputPath = line.getOptionValue("o");
-					
+			jobId = line.getOptionValue("n");
+			
 			fs = FileSystem.newInstance(conf);
 			//fs.delete(new Path(hdfsHome+strippedDirectory), true);
 			
-			//String splitsPath = localInputPath+"/splitted";
-			//InputSplitter splitter = new InputSplitter(localInputPath,splitsPath);
-			//splitter.split();
-			
 			//copy splitted files from local Master to HDFS
-			//fs.copyFromLocalFile(new Path(splitsPath), new Path(hdfsInputPath));
+			boolean delSrc = true;
+			updateStatus(jobId,"RUNNING","Transfer input data to cluster");
+			fs.copyFromLocalFile(delSrc,new Path(localInputPath), new Path(hdfsInputPath));
 			
-			fs.copyFromLocalFile(new Path(localInputPath), new Path(hdfsInputPath));
-			
-			//delete splitted files from local Master
-			//fs.delete(new Path(splitsPath),true);
+			//delete splitted files on local Master
+			//fs.delete(new Path(localInputPath),true);
 
-			Job job = Job.getInstance(conf, "HTS");
+			Job job = Job.getInstance(conf, jobId);
 			job.setNumReduceTasks(0);
 			job.setJarByClass(Main.class);
 
@@ -156,27 +208,50 @@ public class Main
 			FileInputFormat.setInputDirRecursive(job, true);
 			FileInputFormat.addInputPath(job,new Path(hdfsInputPath));
 			FileOutputFormat.setOutputPath(job, new Path(hdfsTmpPath));
-
-			job.waitForCompletion(true);
-		
+			
+			updateStatus(jobId,"RUNNING","Submit job to cluster");
+			job.submit(); 
+			
+			//append hadoop app's id
+			updateStatus(jobId+":"+job.getJobID().toString(),"RUNNING","Start hadoop job");
+			while(!job.isComplete())
+			{
+				//updateStatus(job);
+				//System.out.println("State:"+job.getJobState().toString());
+				//System.out.println("Progress:"+String.valueOf(job.mapProgress()));
+				Thread.sleep(5000);
+			}
+			//job.waitForCompletion(true);
 			//Local directory will be created automatically if not exist
 			//fs.copyToLocalFile(new Path(hdfsOutputPath),new Path(currentDirectory,localOutputPath));
-			fs.copyToLocalFile(false,new Path(hdfsOutputPath),new Path(currentDirectory,localOutputPath),true);
+			if(job.isSuccessful())
+			{
+				updateStatus(jobId,"RUNNING","Transfer output data to destination");
+				delSrc = true;
+				boolean useRawLocalFileSystem = true; //do not copy .crc files
+				fs.copyToLocalFile(delSrc,new Path(hdfsOutputPath),new Path(currentDirectory,localOutputPath),useRawLocalFileSystem);
+			}
 			
 		}
 		catch (Exception e) {
 			// TODO Auto-generated catch block
+			if(jobId != null)
+			{
+				updateStatus(jobId,"FAILED",e.getMessage());
+			}
 			e.printStackTrace();
 		}		
 		finally
 		{
 			try 
 			{
+				updateStatus(jobId,"RUNNING","Clean up the cluster");
 				//delete all job files on DataNode
-			    //for (String s: ClusterStats.getDatanodes())
-			    //{
-			    	//Util.execute(String.format("ssh %s 'rm -fr job' ",s));
-			    //}
+			    for (String s: ClusterStats.getDatanodes())
+			    {
+			    	Util.execute(String.format("ssh %s 'rm -fr job' ",s));
+			    }
+				
 				//delete all job files on HDFS
 				fs.delete(new Path(hdfsHome+strippedDirectory), true);
 				

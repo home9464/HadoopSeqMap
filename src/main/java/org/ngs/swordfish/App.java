@@ -1,5 +1,6 @@
 package org.ngs.swordfish;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.apache.commons.io.FilenameUtils;
@@ -24,11 +25,11 @@ public class App
 		//System.out.println(FilenameUtils.getPath("/A/B/C/D/"));
 		//System.out.println(FilenameUtils.getPath("A/B/C/D"));
 		//System.out.println(FilenameUtils.getFullPathNoEndSeparator("/A/B/C/D"));
-		String outputPath = String.format("/user/%s/%s", System.getProperty("user.name"),"A/B/C/input/0001").replace("/input/", "/output/");
-		//System.out.println(outputPath);
-		
-		String pp = "/home/hadoop/job/hadoop@scheduler/1/input/0002/1.cmd";
-		System.out.println(FilenameUtils.getName(pp));
-		
+    	String workingPath = "/home/hadoop/log";
+		for(File s:new File(workingPath).listFiles())
+		{
+			System.out.println(s.getAbsolutePath()+":"+s.lastModified());
+		}
+
     }
 }
