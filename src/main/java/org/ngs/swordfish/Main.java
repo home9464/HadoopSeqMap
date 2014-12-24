@@ -20,13 +20,45 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class Main
 {
-	private static String statusUrl = "http://192.168.1.121:3000/job";
+	//private static String statusUrl = "http://192.168.1.121:3000/job";
+	private String jobId;
+	private String localInputPath = ".";
+	private String localOutputPath = ".";
+	private String statusUrl;
 	
+	private Configuration conf;
+	private FileSystem fileSystem;
 	public Main()
 	{
+		conf = new Configuration();
+		
+	}
+	public Main(CommandLine cmdLine)
+	{
+		this();
+		localInputPath = cmdLine.getOptionValue("i");
+		localOutputPath = cmdLine.getOptionValue("o");
+		jobId = cmdLine.getOptionValue("n");
+		statusUrl = cmdLine.getOptionValue("u");
 	}
 	
-	public static void configureHadoop(Configuration conf,int numContainersPerNode)
+	public Main(String jobid,String input,String output)
+	{
+		this();
+		jobId = jobid;
+		localInputPath = input;
+		localOutputPath = output;
+		statusUrl = null;
+		conf = new Configuration();
+		
+	}
+	public Main(String jobid,String input,String output,String statusurl)
+	{
+		this(jobid,input,output);
+		statusUrl = statusurl;
+	}
+	
+	public void configureHadoop(int numContainersPerNode)
 	{
 		float ratio = 0.9f;
 
@@ -89,7 +121,7 @@ public class Main
 		
 	}
 	
-	private static void updateStatus(Job j)
+	private void updateStatus(Job j)
 	{
 		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
 		if (statusUrl != null)
@@ -104,14 +136,15 @@ public class Main
 			
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				//e.printStackTrace();
 			} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			//e.printStackTrace();
 			}
 		}
 	}
-	private static void updateStatus(String jobId,String jobState, String jobProgress,String jobMessage)
+	
+	private void updateStatus(String jobState, String jobProgress,String jobMessage)
 	{
 		if (statusUrl != null)
 		{
@@ -121,11 +154,19 @@ public class Main
 					jobState,
 					jobProgress,
 					jobMessage);
-			Util.execute(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+			try
+			{
+				Util.execute(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+			}
+			catch(Exception e)
+			{
+				
+			}
+			
 		}
 	}
 
-	private static void updateStatus(String jobId,String jobState, String jobMessage)
+	private void updateStatus(String jobState, String jobMessage)
 	{
 		if (statusUrl != null)
 		{
@@ -134,64 +175,86 @@ public class Main
 					jobId,
 					jobState,
 					jobMessage);
-			Util.execute(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+			try
+			{
+				Util.execute(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+			}
+			catch(Exception e)
+			{
+				
+			}
 		}
 	}
-
-	public static void main(String[] args)
+	
+	private void transferInput(String hdfsDestPath) throws IllegalArgumentException, IOException
 	{
+		boolean delSrc = true;
+		updateStatus("RUNNING","Transfer input data to cluster");
+		fileSystem.copyFromLocalFile(delSrc,new Path(localInputPath), new Path(hdfsDestPath));
 		
-		Option i = OptionBuilder.withArgName( "input file or directory" ).hasArg().isRequired()
-				.withDescription("Inputs for this job" ).create( "i" );
-
-		Option o = OptionBuilder.withArgName( "output directory" ).hasArg().isRequired() 
-				.withDescription("Output folder for this job" ).create( "o" );
-
-		Option n = OptionBuilder.withArgName( "job name/id" ).hasArg().isRequired() 
-				.withDescription("Job name" ).create( "n" );
+		//delete splitted files on local Master
+		//fileSystem.delete(new Path(localInputPath),true);
 		
-		Options options = new Options();
-		options.addOption(i);
-		options.addOption(o);
-		options.addOption(n);
-		CommandLineParser parser = new BasicParser();
+	}
 
-		String localInputPath = ".";
-		String localOutputPath = ".";
+	private void transferOutput(Path HDFS_OUTPUT_PATH, Path clientOutputPath)
+	{
+		updateStatus("RUNNING","Transfer output data to destination");
+		boolean delSrc = true;
+		boolean useRawLocalFileSystem = true; //do not copy .crc files
+		//fileSystem.copyToLocalFile(delSrc,new Path(HDFS_OUTPUT_PATH),new Path(CURRENT_DIR,localOutputPath),useRawLocalFileSystem);
+		try 
+		{
+			fileSystem.copyToLocalFile(delSrc,HDFS_OUTPUT_PATH,clientOutputPath,useRawLocalFileSystem);
+		} 
+		catch (IOException e) 
+		{
+			e.printStackTrace();
+		}
 		
-		String currentDirectory = System.getProperty("user.dir");
+	}
+
+	private void cleanup(Path hdfsPathToClean)
+	{
+		try 
+		{
+			updateStatus("RUNNING","Clean up the cluster");
+			//delete all job files on DataNode
+		    for (String s: ClusterStats.getDatanodes())
+		    {
+		    	Util.execute(String.format("ssh %s 'rm -fr job' ",s));
+		    }
+			
+			//delete all job files on HDFS
+		    fileSystem.delete(hdfsPathToClean, true);
+			
+		} 
+		//catch (IllegalArgumentException | IOException e) 
+		catch (Exception e) 
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void start()
+	{
+		String CURRENT_DIR = System.getProperty("user.dir");
 		// "$HOME/A/B/C" -> "/A/B/C" 
-		String strippedDirectory = currentDirectory.replaceFirst(System.getProperty("user.home"),"");
-		
-		String hdfsHome = String.format("/user/%s",System.getProperty("user.name"));
-		
-		String hdfsInputPath = hdfsHome+strippedDirectory+"/input";
-		String hdfsOutputPath = hdfsHome+strippedDirectory+"/output"; 
-		String hdfsTmpPath = hdfsHome+strippedDirectory+"/tmp"; 
-
-		CommandLine line;
-		Configuration conf = new Configuration();
-		configureHadoop(conf,1);
-		FileSystem fs=null;
-		String jobId = null;
+		String STRIPPED_DIR = CURRENT_DIR.replaceFirst(System.getProperty("user.home"),"");
+		String HDFS_HOME = String.format("/user/%s",System.getProperty("user.name"));
+		String HDFS_INPUT_PATH = HDFS_HOME+STRIPPED_DIR+"/input";
+		String HDFS_OUTPUT_PATH = HDFS_HOME+STRIPPED_DIR+"/output";
+		String HDFS_TMP_PATH = HDFS_HOME+STRIPPED_DIR+"/tmp";
 		try
 		{
-			line = parser.parse(options, args);
-			localInputPath = line.getOptionValue("i");
-			localOutputPath = line.getOptionValue("o");
-			jobId = line.getOptionValue("n");
 			
-			fs = FileSystem.newInstance(conf);
-			//fs.delete(new Path(hdfsHome+strippedDirectory), true);
+			fileSystem = FileSystem.newInstance(conf);
+			configureHadoop(1);
 			
 			//copy splitted files from local Master to HDFS
-			boolean delSrc = true;
-			updateStatus(jobId,"RUNNING","Transfer input data to cluster");
-			fs.copyFromLocalFile(delSrc,new Path(localInputPath), new Path(hdfsInputPath));
+			transferInput(HDFS_INPUT_PATH);
 			
-			//delete splitted files on local Master
-			//fs.delete(new Path(localInputPath),true);
-
 			Job job = Job.getInstance(conf, jobId);
 			job.setNumReduceTasks(0);
 			job.setJarByClass(Main.class);
@@ -206,62 +269,58 @@ public class Main
 			job.setOutputValueClass(NullWritable.class);
 
 			FileInputFormat.setInputDirRecursive(job, true);
-			FileInputFormat.addInputPath(job,new Path(hdfsInputPath));
-			FileOutputFormat.setOutputPath(job, new Path(hdfsTmpPath));
+			FileInputFormat.addInputPath(job,new Path(HDFS_INPUT_PATH));
+			FileOutputFormat.setOutputPath(job, new Path(HDFS_TMP_PATH));
 			
-			updateStatus(jobId,"RUNNING","Submit job to cluster");
-			job.submit(); 
-			
+			updateStatus("RUNNING","Submit job to cluster");
+			job.submit(); 			
 			//append hadoop app's id
-			updateStatus(jobId+":"+job.getJobID().toString(),"RUNNING","Start hadoop job");
+			//mc.updateStatus(jobId+":"+job.getJobID().toString(),"RUNNING","Start hadoop job");
+			updateStatus("RUNNING","Start hadoop job");
+			
 			while(!job.isComplete())
 			{
 				//updateStatus(job);
-				//System.out.println("State:"+job.getJobState().toString());
-				//System.out.println("Progress:"+String.valueOf(job.mapProgress()));
 				Thread.sleep(5000);
 			}
-			//job.waitForCompletion(true);
-			//Local directory will be created automatically if not exist
-			//fs.copyToLocalFile(new Path(hdfsOutputPath),new Path(currentDirectory,localOutputPath));
 			if(job.isSuccessful())
 			{
-				updateStatus(jobId,"RUNNING","Transfer output data to destination");
-				delSrc = true;
-				boolean useRawLocalFileSystem = true; //do not copy .crc files
-				fs.copyToLocalFile(delSrc,new Path(hdfsOutputPath),new Path(currentDirectory,localOutputPath),useRawLocalFileSystem);
+				transferOutput(new Path(HDFS_OUTPUT_PATH), new Path(CURRENT_DIR,localOutputPath));
 			}
 			
 		}
 		catch (Exception e) {
-			// TODO Auto-generated catch block
-			if(jobId != null)
-			{
-				updateStatus(jobId,"FAILED",e.getMessage());
-			}
-			e.printStackTrace();
+			updateStatus("FAILED",e.getMessage());
 		}		
 		finally
 		{
-			try 
-			{
-				updateStatus(jobId,"RUNNING","Clean up the cluster");
-				//delete all job files on DataNode
-			    for (String s: ClusterStats.getDatanodes())
-			    {
-			    	Util.execute(String.format("ssh %s 'rm -fr job' ",s));
-			    }
-				
-				//delete all job files on HDFS
-				fs.delete(new Path(hdfsHome+strippedDirectory), true);
-				
-			} 
-			//catch (IllegalArgumentException | IOException e) 
-			catch (Exception e) 
-			{
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			cleanup(new Path(HDFS_HOME+STRIPPED_DIR));
 		}
+		
+	}
+	
+	public static void main(String[] args)
+	{
+		Option optInput = OptionBuilder.hasArg().isRequired().create( "i" );
+		Option optOuptut = OptionBuilder.hasArg().isRequired() .create( "o" );
+		Option optJobId = OptionBuilder.hasArg().isRequired().create( "n" );
+		Option optPostUrl = OptionBuilder.hasArg().create( "u" );
+		
+		Options options = new Options();
+		options.addOption(optInput);
+		options.addOption(optOuptut);
+		options.addOption(optJobId);
+		options.addOption(optPostUrl);
+		CommandLineParser parser = new BasicParser();
+		try 
+		{
+			CommandLine cmdLine = parser.parse(options, args);
+			new Main(cmdLine).start();
+		} 
+		catch (ParseException e) 
+		{
+			e.printStackTrace();
+		}
+		
 	}
 }
