@@ -204,7 +204,7 @@ public class InputSplitter
 		String cat = fastq_1.endsWith(".gz") ? "pigz -dc" : "cat";
 
 		// we have to count how many lines per FASTQ file.
-		String ret = Util.executeStdout(String.format("%s %s | wc -l", cat,fastq_1));
+		String ret = Util.runCommand(String.format("%s %s | wc -l", cat,fastq_1));
 		
 		int totalReads = Integer.parseInt(ret)/FASTQ_NUM_LINES_PER_READ;
 

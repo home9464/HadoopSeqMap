@@ -70,28 +70,46 @@ public class ClusterStats
 		int mem_MB = 4096; //default
 		//use "cat /proc/meminfo"
 		Pattern pattern = Pattern.compile("^MemTotal:\\s+(\\d+)\\s*kB");
-		Matcher matcher = pattern.matcher(Util.executeStdout(commands[0]));
-		if (matcher.find()) 
+		Matcher matcher;
+		try 
 		{
-			return Integer.parseInt(matcher.group(1))/MB;
-		}		
+			matcher = pattern.matcher(Util.runCommand(commands[0]));
+			if (matcher.find()) 
+			{
+				return Integer.parseInt(matcher.group(1))/MB;
+			}
+			
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		//use "vmstat -s"
 		
 		pattern = Pattern.compile("\\s*(\\d+)\\s+.*total memory");
-		matcher = pattern.matcher(Util.executeStdout(commands[1]));
-		if (matcher.find()) 
-		{
-			return Integer.parseInt(matcher.group(1))/MB; 
-		}			
+		try {
+			matcher = pattern.matcher(Util.runCommand(commands[1]));
+			if (matcher.find()) 
+			{
+				return Integer.parseInt(matcher.group(1))/MB; 
+			}			
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		//use "free -m"
 		pattern = Pattern.compile(".*Mem:\\s*(\\d+)\\s+.*");
-		matcher = pattern.matcher(Util.executeStdout(commands[2]));
-		if (matcher.find()) 
-		{
-			return Integer.parseInt(matcher.group(1)); 
-		}			
+		try {
+			matcher = pattern.matcher(Util.runCommand(commands[2]));
+			if (matcher.find()) 
+			{
+				return Integer.parseInt(matcher.group(1)); 
+			}			
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return mem_MB;
 	}
 	
@@ -125,7 +143,14 @@ public class ClusterStats
 	public static int getNumCpuCore()
 	{
 		String command = "grep -c ^processor /proc/cpuinfo 2>/dev/null";
-		return Integer.parseInt(Util.executeStdout(command));
+		try 
+		{
+			return Integer.parseInt(Util.runCommand(command));
+		} 
+		catch (Exception e) 
+		{
+			return 1;
+		}
 	}
     /**
      * Get the number of CPU cores of each DataNode
@@ -134,7 +159,14 @@ public class ClusterStats
 	{
 		String dn1 = datanodes.get(0);
 		String command = String.format("ssh -t %s \"grep -c ^processor /proc/cpuinfo\" 2>/dev/null",dn1);
-		return Integer.parseInt(Util.executeStdout(command));
+		try 
+		{
+			return Integer.parseInt(Util.runCommand(command));
+		} 
+		catch (Exception e) 
+		{
+			return 1;
+		}
 	}
 	
     /**

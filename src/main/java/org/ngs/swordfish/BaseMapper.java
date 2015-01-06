@@ -44,7 +44,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		try
 		{
 
-			//use time stamp to determine output files  - newer files are outputs
+			//use timestamp to determine output files  - newer files are outputs
 			long  timeStamp = 0L;
 			File[] allFiles = new File(workingPath).listFiles();		
 			for(File f:allFiles)
@@ -55,14 +55,10 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 				}
 			}
 			
-			
 			//run the command file as a script
 			Configuration conf = context.getConfiguration();
-			String ret = Util.executeShellStdout(workingPath,commandFileName);
-			if (ret.startsWith("Exception") || ret.startsWith("Error")) 
-			{
-				throw new IOException(ret);
-			}
+			
+			Util.runScript(workingPath,commandFileName);
 			
 			FileSystem fs = FileSystem.newInstance(conf);
 		
@@ -93,14 +89,14 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			}
 			
 		}
-		catch (IOException e)
+		catch (Exception e)
 		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		finally
 		{
-			Util.execute(String.format("rm -fr %s",workingPath));
+			//Util.execute(String.format("rm -fr %s",workingPath));
 		}
 
 	}

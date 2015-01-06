@@ -9,32 +9,107 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.UnknownFormatFlagsException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.exec.ExecuteException;
+import org.apache.commons.exec.LogOutputStream;
+import org.apache.commons.exec.PumpStreamHandler;
 import org.apache.commons.lang.RandomStringUtils;
-import org.apache.hadoop.conf.Configuration;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.yarn.api.records.NodeReport;
-import org.apache.hadoop.yarn.api.records.NodeState;
-import org.apache.hadoop.yarn.api.records.Resource;
-import org.apache.hadoop.yarn.api.records.YarnClusterMetrics;
-import org.apache.hadoop.yarn.client.api.YarnClient;
-import org.apache.hadoop.yarn.exceptions.YarnException;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+
+class CollectingLogOutputStream extends LogOutputStream {
+    private final List<String> lines = new LinkedList<String>();
+    @Override protected void processLine(String line, int level) {
+        lines.add(line);
+    }   
+    public List<String> getLines() {
+        return lines;
+    }
+}
+
+class ExecLogHangler extends LogOutputStream {
+    private Logger log;
+
+    public ExecLogHangler(Logger log, Level level) {
+        super(level.intLevel());
+        this.log = log;
+    }
+
+    @Override
+    protected void processLine(String line, int level) {
+        log.log(Level.forName("Level",level), line);
+        //System.out.println(line);
+        
+    }
+}
+
+
 
 public class Util
 {
 
+	static final Logger logger = LogManager.getLogger();
+
+	public static int runScript(String path,String script) throws Exception 
+	{
+        CommandLine oCmdLine = CommandLine.parse("bash "+script);
+        DefaultExecutor oDefaultExecutor = new DefaultExecutor();
+        oDefaultExecutor.setExitValue(0);
+        oDefaultExecutor.setWorkingDirectory(new File(path));
+        oDefaultExecutor.setStreamHandler(new PumpStreamHandler(new ExecLogHangler(logger, Level.ERROR)));
+        return oDefaultExecutor.execute(oCmdLine);
+    }
+
+	public static int runScript2(String path,String script) 
+	{
+		int iExitCode = 0;
+        CommandLine oCmdLine = CommandLine.parse("bash "+script);
+        DefaultExecutor oDefaultExecutor = new DefaultExecutor();
+        oDefaultExecutor.setExitValue(0);
+        oDefaultExecutor.setWorkingDirectory(new File(path));
+        oDefaultExecutor.setStreamHandler(new PumpStreamHandler(new ExecLogHangler(logger, Level.ERROR)));
+        try 
+        {
+        	iExitCode = oDefaultExecutor.execute(oCmdLine);
+        } 
+        catch (ExecuteException e) {
+        	logger.error(e.getMessage());
+        	iExitCode =  e.getExitValue();
+        } 
+        catch (IOException e) {
+        	logger.error(e.getMessage());
+        	iExitCode = -1;
+        }
+        return iExitCode;
+    }
+
+	/**
+	 * run a command and capture it's output as return value
+	 * 
+	 * */
+	public static String runCommand(String command) throws Exception
+	{
+        CommandLine oCmdLine = CommandLine.parse(command);
+        DefaultExecutor oDefaultExecutor = new DefaultExecutor();
+        oDefaultExecutor.setExitValue(0);
+        CollectingLogOutputStream output = new CollectingLogOutputStream();
+        oDefaultExecutor.setStreamHandler(new PumpStreamHandler(output));
+        oDefaultExecutor.execute(oCmdLine);
+        return  StringUtils.join(output.getLines(),"\n"); 
+    }
+	
 	public static String getCommonPrefix(String s1,String s2)
 	{
 		String[] sz = new String[2];
@@ -111,6 +186,7 @@ public class Util
 	 * TODO: return (exitcode, stdout, stderr)
 	 * 
 	 * */
+	
     public static int execute(final String command)
     {
     	try
@@ -138,116 +214,6 @@ public class Util
 		return -1;
     }
 
-    /**
-     * run a shell script
-     * 
-     * */
-    public static int executeScript(final String script)
-    {
-    	try
-    	{
-  		  	String [] cmd = {"/bin/bash" ,script};
-  		  	ProcessBuilder probuilder = new ProcessBuilder(cmd);
-  		  	Map<String, String> env = probuilder.environment();
-			env = System.getenv();
-  		  	Process process = probuilder.start();
-  		  	BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));  
-  		  	String line = null;  
-  		  	while ((line = in.readLine()) != null) 
-  		  	{  
-  		  		//System.out.println(line);  
-  		  	} 
-  		  	return process.waitFor();
-
-    	}
-    	catch(IOException e)
-    	{
-			e.printStackTrace();
-    		
-    	}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
-		}
-		return -1;
-    }
-
-    public static String executeStdout(String command)
-    {
-    	try
-    	{
-  		  	String [] cmd = {"/bin/bash" , "-c", command};
-  		  	Process p = Runtime.getRuntime().exec(cmd);
-  		  	p.waitFor();
-  		  	BufferedReader stdInput = new BufferedReader(new InputStreamReader(p.getInputStream()));
-  		  	BufferedReader stdError = new BufferedReader(new InputStreamReader(p.getErrorStream()));
-  		  	String line = null;
-  		  	StringBuffer sb = new StringBuffer(); 
-  		  	while ((line = stdInput.readLine()) != null) 
-  		  	{  
-  		  		sb.append(line);
-  		  	} 
-  		  	while ((line = stdError.readLine()) != null) 
-  		  	{  
-  		  		sb.append(line+"\n");
-  		  	} 
-
-  		  	return sb.toString();
-
-    	}
-    	catch(IOException e)
-    	{
-			e.printStackTrace();
-    	}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
-		}
-		return null;
-    }
-
-    public static String executeShellStdout(String path,String script)
-    {
-		int CpuNum = Runtime.getRuntime().availableProcessors();
-		int MemoryMB = (int)Runtime.getRuntime().maxMemory();		
-    	try
-    	{
-  		  	//String [] cmd = {"/bin/bash" ,String.format("%s %d %d", script,CpuNum,MemoryMB)};
-  		  	String [] cmd = {"/bin/bash" ,script};
-  		  	ProcessBuilder probuilder = new ProcessBuilder(cmd);
-  		  	Map<String, String> env = probuilder.environment();
-			//env = System.getenv();
-  		  	env.put("HOME", System.getProperty("user.home"));
-  		  	probuilder.directory(new File(path));
-  		  	Process process = probuilder.start();
-  		  	process.waitFor();
-  		  	BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
-  		  	BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-  		  	String line = null;
-  		  	StringBuffer sb = new StringBuffer(); 
-  		  	while ((line = stdInput.readLine()) != null) 
-  		  	{  
-  		  		sb.append(line);
-  		  	} 
-  		  	while ((line = stdError.readLine()) != null) 
-  		  	{  
-  		  		sb.append(line+"\n");
-  		  	} 
-
-  		  	return sb.toString();
-
-    	}
-    	catch(IOException e)
-    	{
-			e.printStackTrace();
-    	}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
-		}
-		return null;
-    	
-    }
 
 	public static void deleteHdfsPath(FileSystem fs,Path path) throws IOException
 	{

@@ -193,7 +193,7 @@ public class Main
 		fileSystem.copyFromLocalFile(delSrc,new Path(localInputPath), new Path(hdfsDestPath));
 		
 		//delete splitted files on local Master
-		//fileSystem.delete(new Path(localInputPath),true);
+		fileSystem.delete(new Path(localInputPath),true);
 		
 	}
 
@@ -222,10 +222,10 @@ public class Main
 			//delete all job files on DataNode
 		    for (String s: ClusterStats.getDatanodes())
 		    {
-		    	Util.execute(String.format("ssh %s 'rm -fr job' ",s));
+		    	//Util.execute(String.format("ssh %s 'rm -fr job' ",s));
 		    }
 			
-			//delete all job files on HDFS
+			//delete job folder
 		    fileSystem.delete(hdfsPathToClean, true);
 			
 		} 
@@ -294,7 +294,7 @@ public class Main
 		}		
 		finally
 		{
-			cleanup(new Path(HDFS_HOME+STRIPPED_DIR));
+			//cleanup(new Path(HDFS_HOME+STRIPPED_DIR));
 		}
 		
 	}
