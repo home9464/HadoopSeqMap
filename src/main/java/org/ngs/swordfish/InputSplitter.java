@@ -21,6 +21,8 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FilenameUtils;
 
+
+@Deprecated
 public class InputSplitter 
 {
 	private int numContainersPerNode;
@@ -76,16 +78,16 @@ public class InputSplitter
 	{
 		int fragments = 10; 
 		//System.out.println(String.format("rm -fr %s/%s",inputPath,SPLIT_FOLDER_NAME));
-		Util.execute(String.format("rm -fr %s",outputPath));
+		Util.runCommand(String.format("rm -fr %s",outputPath));
 		
 		if(listFiles(inputPath,"*.{fastq,fq,fastq.gz,fq.gz}").size()>0)
 		{
 			System.out.println(String.format("%s/util/utool fastq %s %s %d",APP_PATH, inputPath,outputPath,fragments));
-			Util.execute(String.format("%s/util/utool fastq %s %s %d",APP_PATH, inputPath,outputPath,fragments));
+			Util.runCommand(String.format("%s/util/utool fastq %s %s %d",APP_PATH, inputPath,outputPath,fragments));
 		}
 		else
 		{
-			Util.execute(String.format("%s/util/utool bam %s %s",APP_PATH, inputPath,outputPath));
+			Util.runCommand(String.format("%s/util/utool bam %s %s",APP_PATH, inputPath,outputPath));
 		}
 	}
 	
@@ -246,7 +248,7 @@ public class InputSplitter
 
 		// create output path
 		// System.out.println("Create output path: "+pathOfOutput);
-		Util.execute(String.format("mkdir -p %s", outputPath));
+		Util.runCommand(String.format("mkdir -p %s", outputPath));
 
 		class Splitter implements Runnable
 		{
@@ -275,7 +277,12 @@ public class InputSplitter
 				String cmd = String.format(
 						"%s %s | split -l %d -a 4 -d - %s/%s", splitcat,
 						filename, lpf, pathout, prefix);
-				Util.execute(cmd);
+				try {
+					Util.runCommand(cmd);
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 				String[] listOfSplittedFiles = new File(pathout)
 						.list(new FilenameFilter()
 						{
@@ -292,8 +299,13 @@ public class InputSplitter
 					String targetFileName = String.format("%s_%s_R%d.fastq",
 							samplename, suffix, readIndex);
 					// System.out.println(String.format("mv %s/%s %s/%s",pathout,s,pathout,targetFileName));
-					Util.execute(String.format("mv %s/%s %s/%s", pathout,
-							s, pathout, targetFileName));
+					try {
+						Util.runCommand(String.format("mv %s/%s %s/%s", pathout,
+								s, pathout, targetFileName));
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			}
 		}
@@ -323,7 +335,12 @@ public class InputSplitter
 
 				public void run()
 				{
-					Util.execute(String.format("pigz %s", fileName));
+					try {
+						Util.runCommand(String.format("pigz %s", fileName));
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			}
 

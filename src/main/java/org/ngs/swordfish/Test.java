@@ -1,5 +1,7 @@
 package org.ngs.swordfish;
 
+import java.util.UUID;
+
 
 public class Test 
 {
@@ -11,7 +13,7 @@ public class Test
     	//Util.runScript(path,script);
     	//Util.runCommand("hello");
     	try {
-			System.out.println(Util.runCommand("date"));
+			System.out.println(UUID.randomUUID().toString().replaceAll("-", ""));
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

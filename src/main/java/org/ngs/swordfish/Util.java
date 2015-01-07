@@ -62,6 +62,11 @@ public class Util
 
 	static final Logger logger = LogManager.getLogger();
 
+	/**
+	 * run a shell script and capture it's return code as return value.
+	 * standard output and standard error were redirected by logger.
+	 * 
+	 * */
 	public static int runScript(String path,String script) throws Exception 
 	{
         CommandLine oCmdLine = CommandLine.parse("bash "+script);
@@ -70,29 +75,6 @@ public class Util
         oDefaultExecutor.setWorkingDirectory(new File(path));
         oDefaultExecutor.setStreamHandler(new PumpStreamHandler(new ExecLogHangler(logger, Level.ERROR)));
         return oDefaultExecutor.execute(oCmdLine);
-    }
-
-	public static int runScript2(String path,String script) 
-	{
-		int iExitCode = 0;
-        CommandLine oCmdLine = CommandLine.parse("bash "+script);
-        DefaultExecutor oDefaultExecutor = new DefaultExecutor();
-        oDefaultExecutor.setExitValue(0);
-        oDefaultExecutor.setWorkingDirectory(new File(path));
-        oDefaultExecutor.setStreamHandler(new PumpStreamHandler(new ExecLogHangler(logger, Level.ERROR)));
-        try 
-        {
-        	iExitCode = oDefaultExecutor.execute(oCmdLine);
-        } 
-        catch (ExecuteException e) {
-        	logger.error(e.getMessage());
-        	iExitCode =  e.getExitValue();
-        } 
-        catch (IOException e) {
-        	logger.error(e.getMessage());
-        	iExitCode = -1;
-        }
-        return iExitCode;
     }
 
 	/**
@@ -182,38 +164,6 @@ public class Util
 		}*/
 	}
 	
-	/**
-	 * TODO: return (exitcode, stdout, stderr)
-	 * 
-	 * */
-	
-    public static int execute(final String command)
-    {
-    	try
-    	{
-  		  	String [] cmd = {"/bin/bash" , "-c", command};
-  		  	Process p = Runtime.getRuntime().exec(cmd);
-  		  	BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));  
-  		  	String line = null;  
-  		  	while ((line = in.readLine()) != null) 
-  		  	{  
-  		  		//System.out.println(line);  
-  		  	} 
-  		  	return p.waitFor();
-
-    	}
-    	catch(IOException e)
-    	{
-			e.printStackTrace();
-    		
-    	}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
-		}
-		return -1;
-    }
-
 
 	public static void deleteHdfsPath(FileSystem fs,Path path) throws IOException
 	{
@@ -229,6 +179,8 @@ public class Util
 	 * @throws Exception 
 	 * 
 	 * */
+	
+	@Deprecated
 	private static void splitBamCmd(String fileInputRawBam,String pathOutput) throws Exception
 	{
 		throw new Exception("Not implemented");
@@ -241,6 +193,8 @@ public class Util
 	 * split multiple BAMs in parallel
 	 * 
 	 * */
+	
+	@Deprecated
 	private static void splitBams(File[] fileInputRawBams,final String pathOutput)
 	{
 		class Splitter implements Runnable
@@ -284,6 +238,7 @@ public class Util
 		
 	}
 
+	@Deprecated
 	public static void splitBam(File pathInputRawBam,String pathOutput) 
 			throws Exception
 	{

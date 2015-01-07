@@ -4,8 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
-import org.apache.commons.io.FilenameUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -122,7 +122,6 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 					//The local path on DataNode
 		    		String HDFS_scheme = "hdfs:/.+?:\\d+/";
 		    		
-		    		
 		    		// "hdfs://nn1:50017/user/hadoop/job/A/B/C/1.cmd" -> "/user/hadoop/job/A/B/C/1.cmd" -> "/home/hadoop/job/A/B/C/1.cmd" 
 		    		//String hdfsHome = String.format("/user/%s/",System.getProperty("user.name"));
 		    		//String localHome = System.getProperty("user.home");
@@ -131,11 +130,11 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 		    		
 		    		 // HDFS:/user/hadoop/job/A/B/C/input/A_0000_1.cmd -> DataNode:/home/hadoop/job/A/B/C/A_0000_1/
 		    		
-		    		/* hdfs://nn1:50017/user/hadoop/job/hadoop@scheduler/1/input/0002 -> /home/hadoop/job/hadoop@scheduler/1/input/0002 */
+		    		/* hdfs://nn1:50017/user/hadoop/job/hadoop@scheduler/1/input/0002 -> /home/hadoop/job/hadoop@scheduler/1/input/0002_UUID */
 		    		
 		    		String localJobPath = hdfsJobPath.toString().
 							replaceAll(HDFS_scheme, "/").
-							replaceFirst("/user/","/home/");
+							replaceFirst("/user/","/home/")+"_"+UUID.randomUUID().toString().replaceAll("-", "");
 							
 					FileSystem fs = FileSystem.get(conf);
 					fs.copyToLocalFile(hdfsJobPath, new Path(localJobPath));

@@ -1,7 +1,5 @@
 package org.ngs.swordfish;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.util.List;
 
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
@@ -17,6 +15,8 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class Main
 {
@@ -25,7 +25,8 @@ public class Main
 	private String localInputPath = ".";
 	private String localOutputPath = ".";
 	private String statusUrl;
-	
+	static final Logger logger = LogManager.getLogger();
+
 	private Configuration conf;
 	private FileSystem fileSystem;
 	public Main()
@@ -131,16 +132,13 @@ public class Main
 					j.getJobID().toString(),
 					j.getJobState().toString(),
 					"Running job on cluster");
+				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			
-				Util.execute(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
-			
-			} catch (IOException e) {
+			} catch (Exception e) 
+			{
 				// TODO Auto-generated catch block
 				//e.printStackTrace();
-			} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			//e.printStackTrace();
-			}
+			} 
 		}
 	}
 	
@@ -156,7 +154,7 @@ public class Main
 					jobMessage);
 			try
 			{
-				Util.execute(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			}
 			catch(Exception e)
 			{
@@ -177,7 +175,7 @@ public class Main
 					jobMessage);
 			try
 			{
-				Util.execute(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			}
 			catch(Exception e)
 			{
@@ -218,12 +216,12 @@ public class Main
 	{
 		try 
 		{
-			updateStatus("RUNNING","Clean up the cluster");
+			updateStatus("RUNNING","Clean up the temporary HDFS files");
 			//delete all job files on DataNode
-		    for (String s: ClusterStats.getDatanodes())
-		    {
+		    //for (String s: ClusterStats.getDatanodes())
+		    //{
 		    	//Util.execute(String.format("ssh %s 'rm -fr job' ",s));
-		    }
+		    //}
 			
 			//delete job folder
 		    fileSystem.delete(hdfsPathToClean, true);

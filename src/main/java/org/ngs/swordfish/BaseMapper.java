@@ -1,9 +1,7 @@
 package org.ngs.swordfish;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.io.FilenameUtils;
@@ -96,7 +94,13 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		}
 		finally
 		{
-			//Util.execute(String.format("rm -fr %s",workingPath));
+			
+			try {
+				Util.runCommand(String.format("rm -fr %s",workingPath));
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
 	}
