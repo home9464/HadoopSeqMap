@@ -8,15 +8,12 @@ import java.util.regex.Pattern;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.NodeState;
-import org.apache.hadoop.yarn.api.records.Resource;
-import org.apache.hadoop.yarn.api.records.YarnClusterMetrics;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 
 public class ClusterStats
 {
     static List<String> datanodes = new ArrayList<>();
-    
     static
 	{
 		Configuration conf = new Configuration(); 
@@ -59,7 +56,6 @@ public class ClusterStats
 			e.printStackTrace();
 		}
 	}
-	
     public static List<String> getDatanodes()
     {
     	return datanodes;
@@ -128,12 +124,16 @@ public class ClusterStats
      * */
 	public static int getMemoryMbDN()
 	{
-		String dn1 = datanodes.get(0);
-		String[] commands={String.format("ssh %s \"cat /proc/meminfo \" 2>/dev/null",dn1),
+		if(datanodes.size()>0)
+		{
+			String dn1 = datanodes.get(0);
+			String[] commands={String.format("ssh %s \"cat /proc/meminfo \" 2>/dev/null",dn1),
 				String.format("ssh %s \"vmstat -s\" 2>/dev/null",dn1),
 				String.format("ssh %s \"free -m\" 2>/dev/null",dn1)
 				};
-		return getMemoryMb(commands);
+			return getMemoryMb(commands);
+		}
+		return 4096;
 	}	
 	
 
@@ -157,16 +157,17 @@ public class ClusterStats
      * */
 	public static int getNumCpuCoreDN()
 	{
-		String dn1 = datanodes.get(0);
-		String command = String.format("ssh -t %s \"grep -c ^processor /proc/cpuinfo\" 2>/dev/null",dn1);
-		try 
+		try
 		{
+			String dn1 = datanodes.get(0);
+			String command = String.format("ssh -t %s \"grep -c ^processor /proc/cpuinfo\" 2>/dev/null",dn1);
 			return Integer.parseInt(Util.runCommand(command));
-		} 
+		}
 		catch (Exception e) 
 		{
 			return 1;
 		}
+		
 	}
 	
     /**
@@ -176,4 +177,9 @@ public class ClusterStats
 	{
 		return datanodes.size();
 	}
+	public static void main(String[] argv)
+	{
+		getMemoryMbNN();
+	}
+	
 }
