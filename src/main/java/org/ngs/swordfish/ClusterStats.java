@@ -60,10 +60,32 @@ public class ClusterStats
     {
     	return datanodes;
     }
-	private static int getMemoryMb(String[] commands)
+	private static int getMemoryMb(String command)
 	{
 		int MB = 1024;
-		int mem_MB = 4096; //default
+		int mem_MB = 7168; //default, 7GB
+		//use "cat /proc/meminfo"
+		Pattern pattern = Pattern.compile("^MemTotal:\\s+(\\d+)\\s*kB");
+		Matcher matcher;
+		try 
+		{
+			matcher = pattern.matcher(Util.runCommand(command));
+			if (matcher.find()) 
+			{
+				return Integer.parseInt(matcher.group(1))/MB;
+			}
+			
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			System.err.println(command);
+			e.printStackTrace();
+		}
+		return mem_MB;
+	}
+    private static int getMemoryMb2(String[] commands)
+	{
+		int MB = 1024;
+		int mem_MB = 7168; //default, 7GB
 		//use "cat /proc/meminfo"
 		Pattern pattern = Pattern.compile("^MemTotal:\\s+(\\d+)\\s*kB");
 		Matcher matcher;
@@ -115,7 +137,8 @@ public class ClusterStats
 	public static int getMemoryMbNN()
 	{
 		String[] commands={"cat /proc/meminfo","vmstat -s","free -m"};
-		return getMemoryMb(commands);
+		//return getMemoryMb(commands);
+		return getMemoryMb("cat /proc/meminfo");
 		
 	}
 
@@ -124,16 +147,29 @@ public class ClusterStats
      * */
 	public static int getMemoryMbDN()
 	{
-		if(datanodes.size()>0)
+		try
 		{
+			/*
 			String dn1 = datanodes.get(0);
 			String[] commands={String.format("ssh %s \"cat /proc/meminfo \" 2>/dev/null",dn1),
 				String.format("ssh %s \"vmstat -s\" 2>/dev/null",dn1),
 				String.format("ssh %s \"free -m\" 2>/dev/null",dn1)
-				};
+			};
 			return getMemoryMb(commands);
+
+			String[] commands={String.format("ssh %s \"cat /proc/meminfo \" 2>/dev/null",dn1),
+					String.format("ssh %s \"vmstat -s\" 2>/dev/null",dn1),
+					String.format("ssh %s \"free -m\" 2>/dev/null",dn1)
+				};
+
+			*/
+			return getMemoryMb(String.format("ssh %s \"cat /proc/meminfo \" 2>/dev/null",datanodes.get(0)));
+			
 		}
-		return 4096;
+		catch (Exception e) 
+		{
+			return 7168; //7G
+		}		
 	}	
 	
 

@@ -79,6 +79,7 @@ public class Main
 		// minMemoryMbPerContainer, memoryMbAvailable));
 		// }
 		int numCpuCoresPerContainer = ClusterStats.getNumCpuCoreDN() / numContainersPerNode;
+		numCpuCoresPerContainer = numCpuCoresPerContainer >= 1? numCpuCoresPerContainer:1;
 		int memoryMbPerContainer = memoryMbAvailable / numContainersPerNode;
 		int mapreduce_map_java_opts = (int) (memoryMbPerContainer * ratio);
 		int mapreduce_reduce_java_opts = (int) (memoryMbPerContainer * ratio);
