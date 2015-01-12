@@ -137,8 +137,7 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 							replaceFirst("/user/","/home/")+"_"+UUID.randomUUID().toString().replaceAll("-", "");
 							
 					FileSystem fs = FileSystem.get(conf);
-					fs.copyToLocalFile(hdfsJobPath, new Path(localJobPath));
-					
+					fs.copyToLocalFile(true,hdfsJobPath, new Path(localJobPath),true);
 			        k = new Text(localJobPath+"/"+commandFileName);
 					v = new Text("");
 					processed = true;

@@ -1,5 +1,7 @@
 package org.ngs.swordfish;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -13,8 +15,9 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 
 public class ClusterStats
 {
-    static List<String> datanodes = new ArrayList<>();
-    static
+	private static ClusterStats instance=null;
+    private List<String> datanodes = new ArrayList<>();
+	private ClusterStats()
 	{
 		Configuration conf = new Configuration(); 
 		try
@@ -56,19 +59,26 @@ public class ClusterStats
 			e.printStackTrace();
 		}
 	}
-    public static List<String> getDatanodes()
-    {
-    	return datanodes;
-    }
-	private static int getMemoryMb(String command)
+	public static ClusterStats getInstance()
+	{
+		if(instance ==null)
+			return new ClusterStats();
+		return instance;
+	}
+
+    private int getMemoryMb(String host)
 	{
 		int MB = 1024;
 		int mem_MB = 7168; //default, 7GB
-		//use "cat /proc/meminfo"
+		String command = "cat /proc/meminfo 2>/dev/null";
 		Pattern pattern = Pattern.compile("^MemTotal:\\s+(\\d+)\\s*kB");
 		Matcher matcher;
 		try 
 		{
+			if (host != null)
+			{
+				command = String.format("ssh %s 'cat /proc/meminfo' 2>/dev/null",host);
+			}
 			matcher = pattern.matcher(Util.runCommand(command));
 			if (matcher.find()) 
 			{
@@ -82,7 +92,26 @@ public class ClusterStats
 		}
 		return mem_MB;
 	}
-    private static int getMemoryMb2(String[] commands)
+
+    private int getNumCpuCores(String host)
+	{
+		String command = "grep -c ^processor /proc/cpuinfo 2>/dev/null";
+		try 
+		{
+			if (host != null)
+			{
+				command = String.format("ssh %s 'cat /proc/meminfo' 2>/dev/null",host);
+			}
+			return Integer.parseInt(Util.runCommand(command));
+		} 
+		catch (Exception e) 
+		{
+			return 1;
+		}
+	}
+
+    @Deprecated
+    private int getMemoryMb2(String[] commands)
 	{
 		int MB = 1024;
 		int mem_MB = 7168; //default, 7GB
@@ -131,91 +160,55 @@ public class ClusterStats
 		return mem_MB;
 	}
 	
+	
+    public List<String> getDatanodes()
+    {
+    	return datanodes;
+    }
+
     /**
      * Get the available memory in MB of NameNode
      * */
-	public static int getMemoryMbNN()
+	public int getMemoryMbNN()
 	{
-		String[] commands={"cat /proc/meminfo","vmstat -s","free -m"};
-		//return getMemoryMb(commands);
-		return getMemoryMb("cat /proc/meminfo");
-		
+		return getMemoryMb(null);
 	}
+
 
     /**
      * Get the available memory in MB of DataNode
      * */
-	public static int getMemoryMbDN()
+	public int getMemoryMbDN()
 	{
-		try
-		{
-			/*
-			String dn1 = datanodes.get(0);
-			String[] commands={String.format("ssh %s \"cat /proc/meminfo \" 2>/dev/null",dn1),
-				String.format("ssh %s \"vmstat -s\" 2>/dev/null",dn1),
-				String.format("ssh %s \"free -m\" 2>/dev/null",dn1)
-			};
-			return getMemoryMb(commands);
-
-			String[] commands={String.format("ssh %s \"cat /proc/meminfo \" 2>/dev/null",dn1),
-					String.format("ssh %s \"vmstat -s\" 2>/dev/null",dn1),
-					String.format("ssh %s \"free -m\" 2>/dev/null",dn1)
-				};
-
-			*/
-			return getMemoryMb(String.format("ssh %s \"cat /proc/meminfo \" 2>/dev/null",datanodes.get(0)));
-			
-		}
-		catch (Exception e) 
-		{
-			return 7168; //7G
-		}		
+		return getMemoryMb(datanodes.get(0));
 	}	
 	
 
     /**
      * Get the number of CPU cores of NameNode
      * */
-	public static int getNumCpuCore()
+	public int getNumCpuCoresNN()
 	{
-		String command = "grep -c ^processor /proc/cpuinfo 2>/dev/null";
-		try 
-		{
-			return Integer.parseInt(Util.runCommand(command));
-		} 
-		catch (Exception e) 
-		{
-			return 1;
-		}
+		return this.getNumCpuCores(null);
 	}
+	
     /**
      * Get the number of CPU cores of each DataNode
      * */
-	public static int getNumCpuCoreDN()
+	public int getNumCpuCoresDN()
 	{
-		try
-		{
-			String dn1 = datanodes.get(0);
-			String command = String.format("ssh -t %s \"grep -c ^processor /proc/cpuinfo\" 2>/dev/null",dn1);
-			return Integer.parseInt(Util.runCommand(command));
-		}
-		catch (Exception e) 
-		{
-			return 1;
-		}
-		
+		return this.getNumCpuCores(datanodes.get(0));
 	}
 	
     /**
      * Get the number of DataNodes
      * */
-	public static int getNumDN()
+	public int getNumDN()
 	{
 		return datanodes.size();
 	}
+	
 	public static void main(String[] argv)
 	{
-		getMemoryMbNN();
 	}
-	
 }

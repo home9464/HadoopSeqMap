@@ -24,25 +24,38 @@ public class Main
 	private String jobId;
 	private String localInputPath = ".";
 	private String localOutputPath = ".";
-	private String statusUrl;
-	static final Logger logger = LogManager.getLogger();
 
+	private String currentDir;
+	private String strippedDir;
+	private String hdfsBasePath;
+	private String hdfsInputPath;
+	private String hdfsOutputPath;
+	private String hdfsTmpPath;
+	private String statusUrl;
+	
+	//static final Logger logger = LogManager.getLogger();
 	private Configuration conf;
 	private FileSystem fileSystem;
-	public Main()
+	
+	public Main(CommandLine cmdLine)
 	{
 		conf = new Configuration();
 		
-	}
-	public Main(CommandLine cmdLine)
-	{
-		this();
+		currentDir = System.getProperty("user.dir");
+		// "$HOME/A/B/C" -> "/A/B/C" 
+		strippedDir = currentDir.replaceFirst(System.getProperty("user.home"),"");
+		hdfsBasePath = String.format("/user/%s",System.getProperty("user.name"));
+		hdfsInputPath = hdfsBasePath+strippedDir+"/input";
+		hdfsOutputPath = hdfsBasePath+strippedDir+"/output";
+		hdfsTmpPath = hdfsBasePath+strippedDir+"/tmp";
+		
 		localInputPath = cmdLine.getOptionValue("i");
 		localOutputPath = cmdLine.getOptionValue("o");
 		jobId = cmdLine.getOptionValue("n");
 		statusUrl = cmdLine.getOptionValue("u");
 	}
 	
+	/*
 	public Main(String jobid,String input,String output)
 	{
 		this();
@@ -58,14 +71,14 @@ public class Main
 		this(jobid,input,output);
 		statusUrl = statusurl;
 	}
-	
+	*/
 	public void configureHadoop(int numContainersPerNode)
 	{
 		float ratio = 0.9f;
 
 		long task_timeout_millsec = 259200000l; // 72 hours
 		
-		int memoryMbAvailable = (int) (ClusterStats.getMemoryMbDN() * ratio);
+		int memoryMbAvailable = (int) (ClusterStats.getInstance().getMemoryMbDN() * ratio);
 		
 		//System.out.println("Memory:"+String.valueOf(memoryMbAvailable)+"MB,"+"CPU:"+ClusterStats.getNumCpuCoreDN());
 		
@@ -78,7 +91,7 @@ public class Main
 		// "Insufficient memory: Asked: %d, Available: %d",
 		// minMemoryMbPerContainer, memoryMbAvailable));
 		// }
-		int numCpuCoresPerContainer = ClusterStats.getNumCpuCoreDN() / numContainersPerNode;
+		int numCpuCoresPerContainer = ClusterStats.getInstance().getNumCpuCoresDN() / numContainersPerNode;
 		numCpuCoresPerContainer = numCpuCoresPerContainer >= 1? numCpuCoresPerContainer:1;
 		int memoryMbPerContainer = memoryMbAvailable / numContainersPerNode;
 		int mapreduce_map_java_opts = (int) (memoryMbPerContainer * ratio);
@@ -185,26 +198,26 @@ public class Main
 		}
 	}
 	
-	private void transferInput(String hdfsDestPath) throws IllegalArgumentException, IOException
+	private void transferInput() throws IllegalArgumentException, IOException
 	{
 		boolean delSrc = true;
 		updateStatus("RUNNING","Transfer input data to cluster");
-		fileSystem.copyFromLocalFile(delSrc,new Path(localInputPath), new Path(hdfsDestPath));
+		fileSystem.copyFromLocalFile(delSrc,new Path(localInputPath), new Path(this.hdfsInputPath));
 		
 		//delete splitted files on local Master
 		fileSystem.delete(new Path(localInputPath),true);
 		
 	}
 
-	private void transferOutput(Path HDFS_OUTPUT_PATH, Path clientOutputPath)
+	private void transferOutput()
 	{
+		
 		updateStatus("RUNNING","Transfer output data to destination");
 		boolean delSrc = true;
 		boolean useRawLocalFileSystem = true; //do not copy .crc files
-		//fileSystem.copyToLocalFile(delSrc,new Path(HDFS_OUTPUT_PATH),new Path(CURRENT_DIR,localOutputPath),useRawLocalFileSystem);
 		try 
 		{
-			fileSystem.copyToLocalFile(delSrc,HDFS_OUTPUT_PATH,clientOutputPath,useRawLocalFileSystem);
+			fileSystem.copyToLocalFile(delSrc,new Path(this.hdfsOutputPath),new Path(this.currentDir,this.localOutputPath),useRawLocalFileSystem);
 		} 
 		catch (IOException e) 
 		{
@@ -213,22 +226,32 @@ public class Main
 		
 	}
 
-	private void cleanup(Path hdfsPathToClean)
+	private void cleanup()
 	{
+		updateStatus("RUNNING","Clean up the temporary HDFS files");
+		//delete all job files on DataNode
+		for (String s: ClusterStats.getInstance().getDatanodes())
+		{
+			//delete job folder on DataNode
+			try 
+			{
+				String jobDir =  this.strippedDir; 
+		    	if(jobDir.startsWith("/"))
+		    		jobDir = this.strippedDir.replaceFirst("/","");
+				Util.runCommand(String.format("ssh %s 'rm -fr %s' ",s,jobDir));
+			}
+			catch (Exception e) 
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+			
 		try 
 		{
-			updateStatus("RUNNING","Clean up the temporary HDFS files");
-			//delete all job files on DataNode
-		    //for (String s: ClusterStats.getDatanodes())
-		    //{
-		    	//Util.execute(String.format("ssh %s 'rm -fr job' ",s));
-		    //}
-			
-			//delete job folder
-		    fileSystem.delete(hdfsPathToClean, true);
-			
+			//delete job folder on HDFS
+		    fileSystem.delete(new Path(this.hdfsBasePath+this.strippedDir), true);
 		} 
-		//catch (IllegalArgumentException | IOException e) 
 		catch (Exception e) 
 		{
 			// TODO Auto-generated catch block
@@ -238,13 +261,6 @@ public class Main
 	
 	public void start()
 	{
-		String CURRENT_DIR = System.getProperty("user.dir");
-		// "$HOME/A/B/C" -> "/A/B/C" 
-		String STRIPPED_DIR = CURRENT_DIR.replaceFirst(System.getProperty("user.home"),"");
-		String HDFS_HOME = String.format("/user/%s",System.getProperty("user.name"));
-		String HDFS_INPUT_PATH = HDFS_HOME+STRIPPED_DIR+"/input";
-		String HDFS_OUTPUT_PATH = HDFS_HOME+STRIPPED_DIR+"/output";
-		String HDFS_TMP_PATH = HDFS_HOME+STRIPPED_DIR+"/tmp";
 		try
 		{
 			
@@ -252,7 +268,7 @@ public class Main
 			configureHadoop(1);
 			
 			//copy splitted files from local Master to HDFS
-			transferInput(HDFS_INPUT_PATH);
+			transferInput();
 			
 			Job job = Job.getInstance(conf, jobId);
 			job.setNumReduceTasks(0);
@@ -268,8 +284,8 @@ public class Main
 			job.setOutputValueClass(NullWritable.class);
 
 			FileInputFormat.setInputDirRecursive(job, true);
-			FileInputFormat.addInputPath(job,new Path(HDFS_INPUT_PATH));
-			FileOutputFormat.setOutputPath(job, new Path(HDFS_TMP_PATH));
+			FileInputFormat.addInputPath(job,new Path(this.hdfsInputPath));
+			FileOutputFormat.setOutputPath(job, new Path(this.hdfsTmpPath));
 			
 			updateStatus("RUNNING","Submit job to cluster");
 			job.submit(); 			
@@ -284,16 +300,16 @@ public class Main
 			}
 			if(job.isSuccessful())
 			{
-				transferOutput(new Path(HDFS_OUTPUT_PATH), new Path(CURRENT_DIR,localOutputPath));
+				transferOutput();
 			}
 			
 		}
 		catch (Exception e) {
-			updateStatus("FAILED",e.getMessage());
+			updateStatus("Failed",e.getMessage());
 		}		
 		finally
 		{
-			//cleanup(new Path(HDFS_HOME+STRIPPED_DIR));
+			cleanup();
 		}
 		
 	}

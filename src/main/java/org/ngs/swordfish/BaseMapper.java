@@ -96,7 +96,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		{
 			
 			try {
-				//Util.runCommand(String.format("rm -fr %s",workingPath));
+				Util.runCommand(String.format("rm -fr %s",workingPath));
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
