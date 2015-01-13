@@ -203,10 +203,8 @@ public class Main
 		boolean delSrc = true;
 		updateStatus("RUNNING","Transfer input data to cluster");
 		fileSystem.copyFromLocalFile(delSrc,new Path(localInputPath), new Path(this.hdfsInputPath));
-		
 		//delete splitted files on local Master
 		fileSystem.delete(new Path(localInputPath),true);
-		
 	}
 
 	private void transferOutput()
@@ -238,7 +236,7 @@ public class Main
 				String jobDir =  this.strippedDir; 
 		    	if(jobDir.startsWith("/"))
 		    		jobDir = this.strippedDir.replaceFirst("/","");
-				Util.runCommand(String.format("ssh %s 'rm -fr %s' ",s,jobDir));
+				//Util.runCommand(String.format("ssh %s 'rm -fr %s' ",s,jobDir));
 			}
 			catch (Exception e) 
 			{
@@ -250,7 +248,7 @@ public class Main
 		try 
 		{
 			//delete job folder on HDFS
-		    fileSystem.delete(new Path(this.hdfsBasePath+this.strippedDir), true);
+		    //fileSystem.delete(new Path(this.hdfsBasePath+this.strippedDir), true);
 		} 
 		catch (Exception e) 
 		{

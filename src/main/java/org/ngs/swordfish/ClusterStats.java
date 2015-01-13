@@ -19,6 +19,10 @@ public class ClusterStats
     private List<String> datanodes = new ArrayList<>();
 	private ClusterStats()
 	{
+		getDataNodes();
+	}
+	private void getDataNodes()
+	{
 		Configuration conf = new Configuration(); 
 		try
 		{
@@ -58,6 +62,7 @@ public class ClusterStats
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
 	}
 	public static ClusterStats getInstance()
 	{
@@ -70,14 +75,14 @@ public class ClusterStats
 	{
 		int MB = 1024;
 		int mem_MB = 7168; //default, 7GB
-		String command = "cat /proc/meminfo 2>/dev/null";
+		String command = "cat /proc/meminfo";
 		Pattern pattern = Pattern.compile("^MemTotal:\\s+(\\d+)\\s*kB");
 		Matcher matcher;
 		try 
 		{
 			if (host != null)
 			{
-				command = String.format("ssh %s 'cat /proc/meminfo' 2>/dev/null",host);
+				command = String.format("ssh %s 'cat /proc/meminfo'",host);
 			}
 			matcher = pattern.matcher(Util.runCommand(command));
 			if (matcher.find()) 
@@ -95,12 +100,12 @@ public class ClusterStats
 
     private int getNumCpuCores(String host)
 	{
-		String command = "grep -c ^processor /proc/cpuinfo 2>/dev/null";
+		String command = "grep -c ^processor /proc/cpuinfo";
 		try 
 		{
 			if (host != null)
 			{
-				command = String.format("ssh %s 'cat /proc/meminfo' 2>/dev/null",host);
+				command = String.format("ssh %s 'cat /proc/meminfo'",host);
 			}
 			return Integer.parseInt(Util.runCommand(command));
 		} 
@@ -210,5 +215,16 @@ public class ClusterStats
 	
 	public static void main(String[] argv)
 	{
+		System.out.println("HELLO");
+		try
+		{
+			Util.runCommand("ifconfig");
+		}
+		catch (Exception e)
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		ClusterStats.getInstance().getMemoryMbDN();
 	}
 }
