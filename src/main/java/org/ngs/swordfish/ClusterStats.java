@@ -218,7 +218,7 @@ public class ClusterStats
 		System.out.println("HELLO");
 		try
 		{
-			Util.runCommand("ifconfig");
+			System.out.println(Util.runScript("/home/hadoop/0000/","2.sh"));
 		}
 		catch (Exception e)
 		{

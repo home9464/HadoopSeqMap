@@ -15,8 +15,6 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class Main
 {
@@ -33,7 +31,6 @@ public class Main
 	private String hdfsTmpPath;
 	private String statusUrl;
 	
-	//static final Logger logger = LogManager.getLogger();
 	private Configuration conf;
 	private FileSystem fileSystem;
 	
@@ -139,79 +136,100 @@ public class Main
 	private void updateStatus(Job j)
 	{
 		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
-		if (statusUrl != null)
-		{
-			try {
-				String jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobMessage\":\"%s\"}",
+		String jsonContent="";
+		try {
+			jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobMessage\":\"%s\"}",
 					j.getJobID().toString(),
 					j.getJobState().toString(),
 					"Running job on cluster");
+		} catch (Exception e1) 
+		{
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} 
+		
+		if (statusUrl != null)
+		{
+			try {
 				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
-			
-			} catch (Exception e) 
-			{
-				// TODO Auto-generated catch block
-				//e.printStackTrace();
 			} 
+			catch (Exception e) 
+			{
+				System.err.println(e);
+			} 
+		}
+		else
+		{
+			System.out.println(jsonContent);
 		}
 	}
 	
 	private void updateStatus(String jobState, String jobProgress,String jobMessage)
 	{
+		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
+		String jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobProgress\":\"%s\",\"jobMessage\":\"%s\"}",
+				jobId,
+				jobState,
+				jobProgress,
+				jobMessage);
 		if (statusUrl != null)
 		{
-			//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
-			String jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobProgress\":\"%s\",\"jobMessage\":\"%s\"}",
-					jobId,
-					jobState,
-					jobProgress,
-					jobMessage);
 			try
 			{
 				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			}
 			catch(Exception e)
 			{
-				
+				System.err.println(e);
+
 			}
 			
+		}
+		else
+		{
+			System.out.println(jsonContent);
 		}
 	}
 
 	private void updateStatus(String jobState, String jobMessage)
 	{
+		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
+		String jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobMessage\":\"%s\"}",
+				jobId,
+				jobState,
+				jobMessage);
 		if (statusUrl != null)
 		{
-			//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
-			String jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobMessage\":\"%s\"}",
-					jobId,
-					jobState,
-					jobMessage);
 			try
 			{
 				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			}
 			catch(Exception e)
 			{
-				
+				System.err.println(e);
 			}
 		}
+		else
+		{
+			System.out.println(jsonContent);
+		}
+		
 	}
 	
 	private void transferInput() throws IllegalArgumentException, IOException
 	{
-		boolean delSrc = true;
+		boolean delSrc = false;
 		updateStatus("RUNNING","Transfer input data to cluster");
 		fileSystem.copyFromLocalFile(delSrc,new Path(localInputPath), new Path(this.hdfsInputPath));
 		//delete splitted files on local Master
-		fileSystem.delete(new Path(localInputPath),true);
+		//fileSystem.delete(new Path(localInputPath),true);
 	}
 
 	private void transferOutput()
 	{
-		
+		//transfer outputs from HDFS to NameNode
 		updateStatus("RUNNING","Transfer output data to destination");
-		boolean delSrc = true;
+		boolean delSrc = false;
 		boolean useRawLocalFileSystem = true; //do not copy .crc files
 		try 
 		{
@@ -235,8 +253,10 @@ public class Main
 			{
 				String jobDir =  this.strippedDir; 
 		    	if(jobDir.startsWith("/"))
+		    	{
 		    		jobDir = this.strippedDir.replaceFirst("/","");
-				//Util.runCommand(String.format("ssh %s 'rm -fr %s' ",s,jobDir));
+		    	}
+				Util.runCommand(String.format("ssh %s 'rm -fr %s' ",s,jobDir));
 			}
 			catch (Exception e) 
 			{
@@ -248,7 +268,7 @@ public class Main
 		try 
 		{
 			//delete job folder on HDFS
-		    //fileSystem.delete(new Path(this.hdfsBasePath+this.strippedDir), true);
+		    fileSystem.delete(new Path(this.hdfsBasePath+this.strippedDir), true);
 		} 
 		catch (Exception e) 
 		{
@@ -307,7 +327,7 @@ public class Main
 		}		
 		finally
 		{
-			cleanup();
+			//cleanup();
 		}
 		
 	}

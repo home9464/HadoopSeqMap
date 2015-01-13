@@ -56,6 +56,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			//run the command file as a script
 			Configuration conf = context.getConfiguration();
 			
+			System.out.println("#CMD#:"+workingPath+"/"+commandFileName);
 			Util.runScript(workingPath,commandFileName);
 			
 			FileSystem fs = FileSystem.newInstance(conf);
@@ -82,7 +83,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			
 			for(String output: outputFiles)
 			{
-				//copy results from DataNode's local disk to HDFS
+				//transfer outputs from DataNode to HDFS
 				fs.copyFromLocalFile(new Path(output), hdfsOutputPath);
 			}
 			
@@ -90,15 +91,17 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		catch (Exception e)
 		{
 			// TODO Auto-generated catch block
+			System.err.println("##ERROR##:"+e);
 			e.printStackTrace();
 		}
 		finally
 		{
 			
 			try {
-				Util.runCommand(String.format("rm -fr %s",workingPath));
+				//Util.runCommand(String.format("rm -fr %s",workingPath));
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
+				System.err.println("##ERROR##:"+e);
 				e.printStackTrace();
 			}
 		}

@@ -1,10 +1,8 @@
 package org.ngs.swordfish;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -60,7 +58,7 @@ class ExecLogHangler extends LogOutputStream {
 public class Util
 {
 
-	static final Logger logger = LogManager.getLogger();
+	//static final Logger logger = LogManager.getLogger();
 
 	/**
 	 * run a shell script and capture it's return code as return value.
@@ -73,7 +71,8 @@ public class Util
         DefaultExecutor oDefaultExecutor = new DefaultExecutor();
         oDefaultExecutor.setExitValue(0);
         oDefaultExecutor.setWorkingDirectory(new File(path));
-        oDefaultExecutor.setStreamHandler(new PumpStreamHandler(new ExecLogHangler(logger, Level.ERROR)));
+        //oDefaultExecutor.setStreamHandler(new PumpStreamHandler(new ExecLogHangler(logger, Level.ERROR)));
+        oDefaultExecutor.setStreamHandler(new PumpStreamHandler(new CollectingLogOutputStream()));
         return oDefaultExecutor.execute(oCmdLine);
     }
 
@@ -260,6 +259,15 @@ public class Util
 		}
 
 	}
-
+	public static void main(String[] argv)
+	{
+		
+		try {
+			Util.runScript("/home/hadoop/0000","1.cmd");
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
+	}
 	
 }

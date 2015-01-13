@@ -122,16 +122,9 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 					//The local path on DataNode
 		    		String HDFS_scheme = "hdfs:/.+?:\\d+/";
 		    		
-		    		// "hdfs://nn1:50017/user/hadoop/job/A/B/C/1.cmd" -> "/user/hadoop/job/A/B/C/1.cmd" -> "/home/hadoop/job/A/B/C/1.cmd" 
-		    		//String hdfsHome = String.format("/user/%s/",System.getProperty("user.name"));
-		    		//String localHome = System.getProperty("user.home");
-		    		//String strippedPath = commandFile.toString().replaceAll(HDFS_scheme, "/").replaceFirst(hdfsHome,"/");
-		    		//pathInputDN = localHome + "/" + strippedPath;
-		    		
-		    		 // HDFS:/user/hadoop/job/A/B/C/input/A_0000_1.cmd -> DataNode:/home/hadoop/job/A/B/C/A_0000_1/
-		    		
-		    		/* hdfs://nn1:50017/user/hadoop/job/hadoop@scheduler/1/input/0002 -> /home/hadoop/job/hadoop@scheduler/1/input/0002_UUID */
-		    		
+		    		/* source: "hdfs://nn1:50017/user/hadoop/job/hadoop@scheduler/1/input/0002" 
+		    		 * destionation: "/home/hadoop/job/hadoop@scheduler/1/input/0002_UUID"
+		    		 * */
 		    		String localJobPath = hdfsJobPath.toString().
 							replaceAll(HDFS_scheme, "/").
 							replaceFirst("/user/","/home/")+"_"+UUID.randomUUID().toString().replaceAll("-", "");
