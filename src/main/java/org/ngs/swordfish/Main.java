@@ -220,7 +220,7 @@ public class Main
 	
 	private void transferInput() throws IllegalArgumentException, IOException
 	{
-		boolean delSrc = false;
+		boolean delSrc = true;
 		updateStatus("RUNNING","Transfer input data to cluster");
 		fileSystem.copyFromLocalFile(delSrc,new Path(localInputPath), new Path(this.hdfsInputPath));
 		//delete splitted files on local Master
@@ -231,7 +231,7 @@ public class Main
 	{
 		//transfer outputs from HDFS to NameNode
 		updateStatus("RUNNING","Transfer output data to destination");
-		boolean delSrc = false;
+		boolean delSrc = true;
 		boolean useRawLocalFileSystem = true; //do not copy .crc files
 		try 
 		{
@@ -258,7 +258,8 @@ public class Main
 		    	{
 		    		jobDir = this.strippedDir.replaceFirst("/","");
 		    	}
-				Util.command(String.format("ssh %s 'rm -fr %s' ",s,jobDir));
+				//Util.command(String.format("ssh %s 'rm -fr %s' ",s,jobDir));
+				Util.command(String.format("ssh %s 'rm -fr job' ",s));
 			}
 			catch (Exception e) 
 			{
@@ -329,7 +330,7 @@ public class Main
 		}		
 		finally
 		{
-			//cleanup();
+			cleanup();
 		}
 		
 	}
