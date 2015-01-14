@@ -1,8 +1,10 @@
 package org.ngs.swordfish;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -22,10 +24,6 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 
 class CollectingLogOutputStream extends LogOutputStream {
     private final List<String> lines = new LinkedList<String>();
@@ -36,7 +34,7 @@ class CollectingLogOutputStream extends LogOutputStream {
         return lines;
     }
 }
-
+/*
 class ExecLogHangler extends LogOutputStream {
     private Logger log;
 
@@ -53,13 +51,54 @@ class ExecLogHangler extends LogOutputStream {
     }
 }
 
-
+*/
 
 public class Util
 {
 
 	//static final Logger logger = LogManager.getLogger();
 
+    /** Returns null if it failed for some reason.
+     */
+    public static String command(final String directory,final String cmdline) 
+    {
+        try {
+            Process process = 
+                new ProcessBuilder(new String[] {"bash", "-c", cmdline})
+                    .redirectErrorStream(true)
+                    .directory(new File(directory))
+                    .start();
+
+            ArrayList<String> output = new ArrayList<String>();
+            BufferedReader br = new BufferedReader(
+                new InputStreamReader(process.getInputStream()));
+            String line = null;
+            while ( (line = br.readLine()) != null )
+                output.add(line);
+            
+            if (0 != process.waitFor()) //timeout?
+                return null;
+
+            return StringUtils.join(output,"\n");
+
+        } catch (Exception e) {
+        	//TODO:
+            //present appropriate error messages to the user.
+            return null;
+        }
+    }
+
+    public static String command(final String cmdline) 
+    {
+    	return command(".",cmdline); 
+    }
+
+    public static String script(final String directory,final String script) 
+    {
+    	return command(directory,"bash "+script); 
+    }
+
+    
 	/**
 	 * run a shell script and capture it's return code as return value.
 	 * standard output and standard error were redirected by logger.

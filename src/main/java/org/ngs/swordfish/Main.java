@@ -77,6 +77,8 @@ public class Main
 		
 		int memoryMbAvailable = (int) (ClusterStats.getInstance().getMemoryMbDN() * ratio);
 		
+		int cpuCores = ClusterStats.getInstance().getNumCpuCoresDN();
+		
 		//System.out.println("Memory:"+String.valueOf(memoryMbAvailable)+"MB,"+"CPU:"+ClusterStats.getNumCpuCoreDN());
 		
 		// int numContainersPerNode = memoryMbAvailable /
@@ -151,7 +153,7 @@ public class Main
 		if (statusUrl != null)
 		{
 			try {
-				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+				Util.command(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			} 
 			catch (Exception e) 
 			{
@@ -176,7 +178,7 @@ public class Main
 		{
 			try
 			{
-				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+				Util.command(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			}
 			catch(Exception e)
 			{
@@ -202,7 +204,7 @@ public class Main
 		{
 			try
 			{
-				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+				Util.command(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			}
 			catch(Exception e)
 			{
@@ -256,7 +258,7 @@ public class Main
 		    	{
 		    		jobDir = this.strippedDir.replaceFirst("/","");
 		    	}
-				Util.runCommand(String.format("ssh %s 'rm -fr %s' ",s,jobDir));
+				Util.command(String.format("ssh %s 'rm -fr %s' ",s,jobDir));
 			}
 			catch (Exception e) 
 			{

@@ -82,9 +82,9 @@ public class ClusterStats
 		{
 			if (host != null)
 			{
-				command = String.format("ssh %s 'cat /proc/meminfo'",host);
+				command = String.format("ssh %s \"%s\"",host,command);
 			}
-			matcher = pattern.matcher(Util.runCommand(command));
+			matcher = pattern.matcher(Util.command(command));
 			if (matcher.find()) 
 			{
 				return Integer.parseInt(matcher.group(1))/MB;
@@ -105,12 +105,13 @@ public class ClusterStats
 		{
 			if (host != null)
 			{
-				command = String.format("ssh %s 'cat /proc/meminfo'",host);
+				command = String.format("ssh %s \"%s\"",host,command);
 			}
-			return Integer.parseInt(Util.runCommand(command));
+			return Integer.parseInt(Util.command(command));
 		} 
 		catch (Exception e) 
 		{
+			e.printStackTrace();
 			return 1;
 		}
 	}
@@ -125,7 +126,7 @@ public class ClusterStats
 		Matcher matcher;
 		try 
 		{
-			matcher = pattern.matcher(Util.runCommand(commands[0]));
+			matcher = pattern.matcher(Util.command(commands[0]));
 			if (matcher.find()) 
 			{
 				return Integer.parseInt(matcher.group(1))/MB;
@@ -140,7 +141,7 @@ public class ClusterStats
 		
 		pattern = Pattern.compile("\\s*(\\d+)\\s+.*total memory");
 		try {
-			matcher = pattern.matcher(Util.runCommand(commands[1]));
+			matcher = pattern.matcher(Util.command(commands[1]));
 			if (matcher.find()) 
 			{
 				return Integer.parseInt(matcher.group(1))/MB; 
@@ -153,7 +154,7 @@ public class ClusterStats
 		//use "free -m"
 		pattern = Pattern.compile(".*Mem:\\s*(\\d+)\\s+.*");
 		try {
-			matcher = pattern.matcher(Util.runCommand(commands[2]));
+			matcher = pattern.matcher(Util.command(commands[2]));
 			if (matcher.find()) 
 			{
 				return Integer.parseInt(matcher.group(1)); 
@@ -218,7 +219,7 @@ public class ClusterStats
 		System.out.println("HELLO");
 		try
 		{
-			System.out.println(Util.runScript("/home/hadoop/0000/","2.sh"));
+			System.out.println(Util.command("/home/hadoop/0000/","2.sh"));
 		}
 		catch (Exception e)
 		{

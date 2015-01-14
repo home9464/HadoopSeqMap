@@ -57,7 +57,8 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			Configuration conf = context.getConfiguration();
 			
 			System.out.println("#CMD#:"+workingPath+"/"+commandFileName);
-			Util.runScript(workingPath,commandFileName);
+			
+			System.err.println("#ERR#"+Util.script(workingPath,commandFileName));
 			
 			FileSystem fs = FileSystem.newInstance(conf);
 		
@@ -98,7 +99,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		{
 			
 			try {
-				//Util.runCommand(String.format("rm -fr %s",workingPath));
+				//Util.command(String.format("rm -fr %s",workingPath));
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				System.err.println("##ERROR##:"+e);
