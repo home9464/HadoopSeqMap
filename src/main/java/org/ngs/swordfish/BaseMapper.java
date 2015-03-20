@@ -58,6 +58,10 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			
 			System.out.println("#CMD#:"+workingPath+"/"+commandFileName);
 			
+			
+			//hadoop-2.6.0/logs/userlogs/application_1425921303294_0026/container_1425921303294_0026_01_000002/stderr
+			//hadoop-2.6.0/logs/userlogs/application_1425921303294_0030/container_1425921303294_0030_01_000002/stderr
+			
 			System.err.println("#ERR#"+Util.script(workingPath,commandFileName));
 			
 			FileSystem fs = FileSystem.newInstance(conf);

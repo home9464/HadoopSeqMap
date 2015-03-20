@@ -1,5 +1,6 @@
 package org.ngs.swordfish;
 import java.io.IOException;
+import java.util.UUID;
 
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
@@ -8,6 +9,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -20,11 +23,6 @@ public class Main
 {
 	//private static String statusUrl = "http://192.168.1.121:3000/job";
 	private String jobId;
-	private String localInputPath = ".";
-	private String localOutputPath = ".";
-
-	private String currentDir;
-	private String strippedDir;
 	private String hdfsBasePath;
 	private String hdfsInputPath;
 	private String hdfsOutputPath;
@@ -38,37 +36,27 @@ public class Main
 	{
 		conf = new Configuration();
 		
+		// "$HOME/A/B/C" -> "/A/B/C"
+		/**
 		currentDir = System.getProperty("user.dir");
-		// "$HOME/A/B/C" -> "/A/B/C" 
 		strippedDir = currentDir.replaceFirst(System.getProperty("user.home"),"");
 		hdfsBasePath = String.format("/user/%s",System.getProperty("user.name"));
 		hdfsInputPath = hdfsBasePath+strippedDir+"/input";
 		hdfsOutputPath = hdfsBasePath+strippedDir+"/output";
 		hdfsTmpPath = hdfsBasePath+strippedDir+"/tmp";
+		*/
 		
-		localInputPath = cmdLine.getOptionValue("i");
-		localOutputPath = cmdLine.getOptionValue("o");
-		jobId = cmdLine.getOptionValue("n");
+		//hdfsBasePath =  '/user/hadoop/jobs/1234'
+		// '/user/hadoop/hadoop_jobs/22995/' ---> '/user/hadoop/hadoop_jobs/22995' 
+		hdfsBasePath = FilenameUtils.normalizeNoEndSeparator(cmdLine.getOptionValue("d"),true);
+		hdfsInputPath = hdfsBasePath+"/input";
+		hdfsOutputPath = hdfsBasePath+"/output";
+		hdfsTmpPath = hdfsBasePath+"/tmp";
+		
+		//jobId = 1234
+		jobId = FilenameUtils.getName(hdfsBasePath);
 		statusUrl = cmdLine.getOptionValue("u");
 	}
-	
-	/*
-	public Main(String jobid,String input,String output)
-	{
-		this();
-		jobId = jobid;
-		localInputPath = input;
-		localOutputPath = output;
-		statusUrl = null;
-		conf = new Configuration();
-		
-	}
-	public Main(String jobid,String input,String output,String statusurl)
-	{
-		this(jobid,input,output);
-		statusUrl = statusurl;
-	}
-	*/
 	public void configureHadoop(int numContainersPerNode)
 	{
 		float ratio = 0.9f;
@@ -218,65 +206,25 @@ public class Main
 		
 	}
 	
-	private void transferInput() throws IllegalArgumentException, IOException
+	private void deleteLocalJobDir()
 	{
-		boolean delSrc = true;
-		updateStatus("RUNNING","Transfer input data to cluster");
-		fileSystem.copyFromLocalFile(delSrc,new Path(localInputPath), new Path(this.hdfsInputPath));
-		//delete splitted files on local Master
-		//fileSystem.delete(new Path(localInputPath),true);
-	}
-
-	private void transferOutput()
-	{
-		//transfer outputs from HDFS to NameNode
-		updateStatus("RUNNING","Transfer output data to destination");
-		boolean delSrc = true;
-		boolean useRawLocalFileSystem = true; //do not copy .crc files
-		try 
-		{
-			fileSystem.copyToLocalFile(delSrc,new Path(this.hdfsOutputPath),new Path(this.currentDir,this.localOutputPath),useRawLocalFileSystem);
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-		}
 		
-	}
-
-	private void cleanup()
-	{
-		updateStatus("RUNNING","Clean up the temporary HDFS files");
+		//job_folder = hadoop_jobs
+		String job_folder = FilenameUtils.getBaseName(FilenameUtils.getFullPathNoEndSeparator(hdfsBasePath));
+		
+		updateStatus("RUNNING","Clean up local job temp files");
 		//delete all job files on DataNode
 		for (String s: ClusterStats.getInstance().getDatanodes())
 		{
-			//delete job folder on DataNode
+			//delete "job" folder on DataNode
 			try 
 			{
-				String jobDir =  this.strippedDir; 
-		    	if(jobDir.startsWith("/"))
-		    	{
-		    		jobDir = this.strippedDir.replaceFirst("/","");
-		    	}
-				//Util.command(String.format("ssh %s 'rm -fr %s' ",s,jobDir));
-				Util.command(String.format("ssh %s 'rm -fr job' ",s));
+				Util.command(String.format("ssh %s 'rm -fr %s'",s,job_folder));
 			}
 			catch (Exception e) 
 			{
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-		}
-			
-		try 
-		{
-			//delete job folder on HDFS
-		    fileSystem.delete(new Path(this.hdfsBasePath+this.strippedDir), true);
-		} 
-		catch (Exception e) 
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 	}
 	
@@ -287,9 +235,6 @@ public class Main
 			
 			fileSystem = FileSystem.newInstance(conf);
 			configureHadoop(1);
-			
-			//copy splitted files from local Master to HDFS
-			transferInput();
 			
 			Job job = Job.getInstance(conf, jobId);
 			job.setNumReduceTasks(0);
@@ -305,7 +250,9 @@ public class Main
 			job.setOutputValueClass(NullWritable.class);
 
 			FileInputFormat.setInputDirRecursive(job, true);
+			
 			FileInputFormat.addInputPath(job,new Path(this.hdfsInputPath));
+			
 			FileOutputFormat.setOutputPath(job, new Path(this.hdfsTmpPath));
 			
 			updateStatus("RUNNING","Submit job to cluster");
@@ -319,10 +266,6 @@ public class Main
 				//updateStatus(job);
 				Thread.sleep(5000);
 			}
-			if(job.isSuccessful())
-			{
-				transferOutput();
-			}
 			
 		}
 		catch (Exception e) {
@@ -330,23 +273,19 @@ public class Main
 		}		
 		finally
 		{
-			cleanup();
+			deleteLocalJobDir();
 		}
 		
 	}
 	
 	public static void main(String[] args)
 	{
-		Option optInput = OptionBuilder.hasArg().isRequired().create( "i" );
-		Option optOuptut = OptionBuilder.hasArg().isRequired() .create( "o" );
-		Option optJobId = OptionBuilder.hasArg().isRequired().create( "n" );
-		Option optPostUrl = OptionBuilder.hasArg().create( "u" );
+		Option HdfsDir = OptionBuilder.hasArg().isRequired().create( "d" );
+		Option PostUrl = OptionBuilder.hasArg().create( "u" );
 		
 		Options options = new Options();
-		options.addOption(optInput);
-		options.addOption(optOuptut);
-		options.addOption(optJobId);
-		options.addOption(optPostUrl);
+		options.addOption(HdfsDir);
+		options.addOption(PostUrl);
 		CommandLineParser parser = new BasicParser();
 		try 
 		{
@@ -357,6 +296,8 @@ public class Main
 		{
 			e.printStackTrace();
 		}
-		
+		//String x = FilenameUtils.normalizeNoEndSeparator("/user/hadoop/hadoop_jobs/22995",true);
+		//System.out.println(FilenameUtils.getName(x));
+		//System.out.println(FilenameUtils.getFullPathNoEndSeparator(x));
 	}
 }
