@@ -228,7 +228,7 @@ public class Main
 		}
 	}
 	
-	public void start()
+	public void start() throws Exception
 	{
 		try
 		{
@@ -251,8 +251,10 @@ public class Main
 
 			FileInputFormat.setInputDirRecursive(job, true);
 			
-			FileInputFormat.addInputPath(job,new Path(this.hdfsInputPath));
+			//the output path must NOT exist prior to launching job
+			fileSystem.delete(new Path(this.hdfsTmpPath),true);
 			
+			FileInputFormat.addInputPath(job,new Path(this.hdfsInputPath));
 			FileOutputFormat.setOutputPath(job, new Path(this.hdfsTmpPath));
 			
 			updateStatus("RUNNING","Submit job to cluster");
@@ -270,6 +272,7 @@ public class Main
 		}
 		catch (Exception e) {
 			updateStatus("Failed",e.getMessage());
+			throw new Exception(e.getMessage());
 		}		
 		finally
 		{
@@ -278,26 +281,15 @@ public class Main
 		
 	}
 	
-	public static void main(String[] args)
+	public static void main(String[] args) throws Exception
 	{
 		Option HdfsDir = OptionBuilder.hasArg().isRequired().create( "d" );
 		Option PostUrl = OptionBuilder.hasArg().create( "u" );
-		
 		Options options = new Options();
 		options.addOption(HdfsDir);
 		options.addOption(PostUrl);
 		CommandLineParser parser = new BasicParser();
-		try 
-		{
-			CommandLine cmdLine = parser.parse(options, args);
-			new Main(cmdLine).start();
-		} 
-		catch (ParseException e) 
-		{
-			e.printStackTrace();
-		}
-		//String x = FilenameUtils.normalizeNoEndSeparator("/user/hadoop/hadoop_jobs/22995",true);
-		//System.out.println(FilenameUtils.getName(x));
-		//System.out.println(FilenameUtils.getFullPathNoEndSeparator(x));
+		CommandLine  cmdLine = parser.parse(options, args);
+		new Main(cmdLine).start();
 	}
 }

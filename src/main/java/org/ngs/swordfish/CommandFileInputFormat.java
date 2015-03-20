@@ -27,9 +27,8 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 {
 
 	// private final String pathTmpLocal = String.format("/home/%s/tmp",user);
-	private final String COMMAND_FILE_EXTENSION=".cmd";
-	//private final String pathHomeLocalDN = System.getProperty("user.home");
-	private String pathInputDN;
+	//private final String COMMAND_FILE_EXTENSION=".cmd";
+	private final String COMMAND_FILE="cmd.sh";
 	
 	@Override
 	protected boolean isSplitable(JobContext context, Path file)
@@ -50,7 +49,7 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 		for (FileStatus file : files)
 		{
 			String fileName = file.getPath().getName();
-			if(fileName.endsWith(COMMAND_FILE_EXTENSION))
+			if(fileName.equalsIgnoreCase(COMMAND_FILE))
 			//if(FilenameUtils.getExtension(fileName).equalsIgnoreCase(COMMAND_FILE_EXTENSION))
 			{
 		    	 //hdfs://nn1:50017/user/hadoop/input/A_0000_R1.fq<PATH_SEPARATOR>hdfs://nn1:50017/user/hadoop/input/A_0000_R2.fq<PATH_SEPARATOR>A_0000
