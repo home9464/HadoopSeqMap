@@ -27,6 +27,8 @@ public class Main
 	private String hdfsInputPath;
 	private String hdfsOutputPath;
 	private String hdfsTmpPath;
+	
+	private String localBasePath;
 	private String statusUrl;
 	
 	private Configuration conf;
@@ -47,14 +49,25 @@ public class Main
 		*/
 		
 		//hdfsBasePath =  '/user/hadoop/jobs/1234'
-		// '/user/hadoop/hadoop_jobs/22995/' ---> '/user/hadoop/hadoop_jobs/22995' 
+		
+		
+		// '/user/hadoop/<hadoop_job_dirname>/22995/' ---> '/user/hadoop/<hadoop_job_dirname>/22995' 
 		hdfsBasePath = FilenameUtils.normalizeNoEndSeparator(cmdLine.getOptionValue("d"),true);
+		
+		localBasePath = StringUtils.replaceOnce(hdfsBasePath,"/user","/home");
+		
+		//'/user/hadoop/<hadoop_job_dirname>/22995/input' 
 		hdfsInputPath = hdfsBasePath+"/input";
+
+		//'/user/hadoop/<hadoop_job_dirname>/22995/output' 
 		hdfsOutputPath = hdfsBasePath+"/output";
+		
+		//'/user/hadoop/<hadoop_job_dirname>/22995/tmp' 
 		hdfsTmpPath = hdfsBasePath+"/tmp";
 		
 		//jobId = 1234
 		jobId = FilenameUtils.getName(hdfsBasePath);
+		
 		statusUrl = cmdLine.getOptionValue("u");
 	}
 	public void configureHadoop(int numContainersPerNode)
@@ -209,8 +222,7 @@ public class Main
 	private void deleteLocalJobDir()
 	{
 		
-		//job_folder = hadoop_jobs
-		String job_folder = FilenameUtils.getBaseName(FilenameUtils.getFullPathNoEndSeparator(hdfsBasePath));
+		//'/user/hadoop/<hadoop_job_dirname>/22995' ---> 
 		
 		updateStatus("RUNNING","Clean up local job temp files");
 		//delete all job files on DataNode
@@ -219,7 +231,7 @@ public class Main
 			//delete "job" folder on DataNode
 			try 
 			{
-				Util.command(String.format("ssh %s 'rm -fr %s'",s,job_folder));
+				Util.command(String.format("ssh %s 'rm -fr %s'",s,localBasePath));
 			}
 			catch (Exception e) 
 			{
@@ -255,6 +267,7 @@ public class Main
 			fileSystem.delete(new Path(this.hdfsTmpPath),true);
 			
 			FileInputFormat.addInputPath(job,new Path(this.hdfsInputPath));
+			
 			FileOutputFormat.setOutputPath(job, new Path(this.hdfsTmpPath));
 			
 			updateStatus("RUNNING","Submit job to cluster");
