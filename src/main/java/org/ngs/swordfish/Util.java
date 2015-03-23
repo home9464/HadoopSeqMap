@@ -76,27 +76,57 @@ public class Util
             while ( (line = br.readLine()) != null )
                 output.add(line);
             
-            if (0 != process.waitFor()) //timeout?
-                return null;
+            //wait for completion
+            int retVal = process.waitFor();
+            
+            if (0 != retVal) //timeout?
+                return "failed: can not wait for porcess to finish "+String.valueOf(retVal);
 
             return StringUtils.join(output,"\n");
 
         } catch (Exception e) {
-        	//TODO:
-            //present appropriate error messages to the user.
-            return null;
+            return "failed: "+e.getMessage();
+            //return null;
         }
     }
-
+    
     public static String command(final String cmdline) 
     {
     	return command(".",cmdline); 
     }
 
-    public static String script(final String directory,final String script) 
+    /** Returns null if it failed for some reason.
+     */
+    public static String script(final String directory,final String scriptFile) 
     {
-    	return command(directory,"bash "+script); 
+        try {
+            Process process = 
+                new ProcessBuilder(new String[] {"bash", scriptFile})
+                    .redirectErrorStream(true)
+                    .directory(new File(directory))
+                    .start();
+
+            ArrayList<String> output = new ArrayList<String>();
+            BufferedReader br = new BufferedReader(
+                new InputStreamReader(process.getInputStream()));
+            String line = null;
+            while ( (line = br.readLine()) != null )
+                output.add(line);
+            
+            //wait for completion
+            int retVal = process.waitFor();
+            
+            if (0 != retVal) //timeout?
+                return "failed: can not wait for porcess to finish "+String.valueOf(retVal);
+
+            return StringUtils.join(output,"\n");
+
+        } catch (Exception e) {
+            return "failed: "+e.getMessage();
+            //return null;
+        }
     }
+
 
     
 	/**

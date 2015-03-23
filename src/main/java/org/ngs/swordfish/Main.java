@@ -224,14 +224,14 @@ public class Main
 		
 		//'/user/hadoop/<hadoop_job_dirname>/22995' ---> 
 		
-		updateStatus("RUNNING","Clean up local job temp files");
 		//delete all job files on DataNode
 		for (String s: ClusterStats.getInstance().getDatanodes())
 		{
+			updateStatus("RUNNING","Clean up local job temp files from "+s);
 			//delete "job" folder on DataNode
 			try 
 			{
-				Util.command(String.format("ssh %s 'rm -fr %s'",s,localBasePath));
+				//Util.command(String.format("ssh %s 'rm -fr %s'",s,localBasePath));
 			}
 			catch (Exception e) 
 			{
