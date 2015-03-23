@@ -145,6 +145,24 @@ public class Util
         return oDefaultExecutor.execute(oCmdLine);
     }
 
+	public void runScript2(String command){
+        String sCommandString = command;
+        int iExitValue=0;
+        CommandLine oCmdLine = CommandLine.parse(sCommandString);
+        DefaultExecutor oDefaultExecutor = new DefaultExecutor();
+        oDefaultExecutor.setExitValue(0);
+        try {
+            iExitValue = oDefaultExecutor.execute(oCmdLine);
+        } catch (ExecuteException e) {
+            // TODO Auto-generated catch block
+            System.err.println("Execution failed.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            System.err.println("permission denied.");
+            e.printStackTrace();
+        }
+    }
 	/**
 	 * run a command and capture it's output as return value
 	 * 
