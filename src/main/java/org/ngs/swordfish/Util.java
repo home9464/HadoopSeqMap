@@ -18,8 +18,11 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteException;
+import org.apache.commons.exec.ExecuteWatchdog;
+import org.apache.commons.exec.Executor;
 import org.apache.commons.exec.LogOutputStream;
 import org.apache.commons.exec.PumpStreamHandler;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.FileSystem;
@@ -56,125 +59,41 @@ class ExecLogHangler extends LogOutputStream {
 public class Util
 {
 
-	//static final Logger logger = LogManager.getLogger();
-
-    /** Returns null if it failed for some reason.
-     */
-    public static String command(final String directory,final String cmdline) 
-    {
-        try {
-            Process process = 
-                new ProcessBuilder(new String[] {"bash", "-c", cmdline})
-                    .redirectErrorStream(true)
-                    .directory(new File(directory))
-                    .start();
-
-            ArrayList<String> output = new ArrayList<String>();
-            BufferedReader br = new BufferedReader(
-                new InputStreamReader(process.getInputStream()));
-            String line = null;
-            while ( (line = br.readLine()) != null )
-                output.add(line);
-            
-            //wait for completion
-            int retVal = process.waitFor();
-            
-            if (0 != retVal) //timeout?
-                return "failed: can not wait for porcess to finish "+String.valueOf(retVal);
-
-            return StringUtils.join(output,"\n");
-
-        } catch (Exception e) {
-            return "failed: "+e.getMessage();
-            //return null;
-        }
-    }
-    
-    public static String command(final String cmdline) 
-    {
-    	return command(".",cmdline); 
-    }
-
-    /** Returns null if it failed for some reason.
-     */
-    public static String script(final String directory,final String scriptFile) 
-    {
-        try {
-            Process process = 
-                new ProcessBuilder(new String[] {"bash", scriptFile})
-                    .redirectErrorStream(true)
-                    .directory(new File(directory))
-                    .start();
-
-            ArrayList<String> output = new ArrayList<String>();
-            BufferedReader br = new BufferedReader(
-                new InputStreamReader(process.getInputStream()));
-            String line = null;
-            while ( (line = br.readLine()) != null )
-                output.add(line);
-            
-            //wait for completion
-            int retVal = process.waitFor();
-            
-            if (0 != retVal) //timeout?
-                return "failed: can not wait for porcess to finish "+String.valueOf(retVal);
-
-            return StringUtils.join(output,"\n");
-
-        } catch (Exception e) {
-            return "failed: "+e.getMessage();
-            //return null;
-        }
-    }
-
-
     
 	/**
 	 * run a shell script and capture it's return code as return value.
 	 * standard output and standard error were redirected by logger.
 	 * 
 	 * */
-	public static int runScript(String path,String script) throws Exception 
+	public static int runScript(String scriptFile) throws ExecuteException, IOException
 	{
-        CommandLine oCmdLine = CommandLine.parse("bash "+script);
-        DefaultExecutor oDefaultExecutor = new DefaultExecutor();
-        oDefaultExecutor.setExitValue(0);
-        oDefaultExecutor.setWorkingDirectory(new File(path));
-        //oDefaultExecutor.setStreamHandler(new PumpStreamHandler(new ExecLogHangler(logger, Level.ERROR)));
-        oDefaultExecutor.setStreamHandler(new PumpStreamHandler(new CollectingLogOutputStream()));
-        return oDefaultExecutor.execute(oCmdLine);
-    }
-
-	public void runScript2(String command){
-        String sCommandString = command;
-        int iExitValue=0;
-        CommandLine oCmdLine = CommandLine.parse(sCommandString);
-        DefaultExecutor oDefaultExecutor = new DefaultExecutor();
-        oDefaultExecutor.setExitValue(0);
-        try {
-            iExitValue = oDefaultExecutor.execute(oCmdLine);
-        } catch (ExecuteException e) {
-            // TODO Auto-generated catch block
-            System.err.println("Execution failed.");
-            e.printStackTrace();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            System.err.println("permission denied.");
-            e.printStackTrace();
-        }
-    }
+		File workingDir = new File(FilenameUtils.getFullPathNoEndSeparator(scriptFile));
+		
+		//change the permission to executable
+		CommandLine cmd = CommandLine.parse("chmod +x "+scriptFile);
+		Executor executor = new DefaultExecutor();
+		executor.setWorkingDirectory(workingDir);
+        //executor.setStreamHandler(new PumpStreamHandler(new ExecLogHangler(logger, Level.ERROR)));
+        //executor.setStreamHandler(new PumpStreamHandler(new CollectingLogOutputStream()));
+		
+		//execute the script
+		executor.execute(cmd,System.getenv());
+		cmd = CommandLine.parse(scriptFile);
+		return executor.execute(cmd);
+	}
+    
 	/**
 	 * run a command and capture it's output as return value
 	 * 
 	 * */
 	public static String runCommand(String command) throws Exception
 	{
-        CommandLine oCmdLine = CommandLine.parse(command);
-        DefaultExecutor oDefaultExecutor = new DefaultExecutor();
-        oDefaultExecutor.setExitValue(0);
+        CommandLine cmd = CommandLine.parse(command);
+        DefaultExecutor executor = new DefaultExecutor();
+        executor.setExitValue(0);
         CollectingLogOutputStream output = new CollectingLogOutputStream();
-        oDefaultExecutor.setStreamHandler(new PumpStreamHandler(output));
-        oDefaultExecutor.execute(oCmdLine);
+        executor.setStreamHandler(new PumpStreamHandler(output));
+        executor.execute(cmd);
         return  StringUtils.join(output.getLines(),"\n"); 
     }
 	
@@ -233,51 +152,8 @@ public class Util
 	}
 
 	
-	public static void searchExecutableScript(String[] appPaths)
-	{
-		/*
-		for (String p: appPaths)
-		{
-			String findScript = String.format("file -i `find %s -name \"*.%s\" 2>/dev/null`",p,"sh");
-			System.out.println(findScript);
-
-			String[] scripts = Util.execShellCommand(findScript);
-			for (String s: scripts)
-			{
-				System.out.println(s);
-			}
-			
-		}*/
-	}
-	
-
-	public static void deleteHdfsPath(FileSystem fs,Path path) throws IOException
-	{
-		if (fs.exists(path))
-		{
-			fs.delete(path, true);
-		}
-
-	}
-  
-	/**
-	 * split BAM by chromosomes. A.bam -> A.chr1.bam, A.chr2.bam, ...
-	 * @throws Exception 
-	 * 
-	 * */
-	
-	@Deprecated
-	private static void splitBamCmd(String fileInputRawBam,String pathOutput) throws Exception
-	{
-		throw new Exception("Not implemented");
-		//String script = String.format("%s/util/%s %s",LocalConfiguration.pathAppDN, "splitBamByChr",LocalConfiguration.pathSamtools);
-		//String cmd = String.format("%s %s %s",script,fileInputRawBam,pathOutput);
-		//execute(cmd);
-	}
-	
 	/**
 	 * split multiple BAMs in parallel
-	 * 
 	 * */
 	
 	@Deprecated
@@ -297,7 +173,7 @@ public class Util
 			{
 				try
 				{
-					splitBamCmd(name,pathOutput);
+					//splitBamCmd(name,pathOutput);
 				}
 				catch (Exception e)
 				{
@@ -323,38 +199,75 @@ public class Util
 		}
 		
 	}
+    @Deprecated
+    public static String command2(final String directory,final String cmdline) 
+    {
+        try {
+            Process process = 
+                new ProcessBuilder(new String[] {"bash", "-c", cmdline})
+                    .redirectErrorStream(true)
+                    .directory(new File(directory))
+                    .start();
 
-	@Deprecated
-	public static void splitBam(File pathInputRawBam,String pathOutput) 
-			throws Exception
-	{
-		
-		if(pathInputRawBam.isDirectory())
-		{
-			//split in parallel
-			File[] files = pathInputRawBam.listFiles(new FilenameFilter() {
-			    public boolean accept(File dir, String name) {
-			        return name.toLowerCase().endsWith(".bam");
-			    }
-			});			
-			
-			splitBams(files,pathOutput);
-		}
-		else
-		{
-			splitBamCmd(pathInputRawBam.getAbsolutePath(),pathOutput);
-		}
+            ArrayList<String> output = new ArrayList<String>();
+            BufferedReader br = new BufferedReader(
+                new InputStreamReader(process.getInputStream()));
+            String line = null;
+            while ( (line = br.readLine()) != null )
+                output.add(line);
+            
+            //wait for completion
+            int retVal = process.waitFor();
+            
+            if (0 != retVal) //timeout?
+                return "failed: can not wait for porcess to finish "+String.valueOf(retVal);
 
-	}
-	public static void main(String[] argv)
-	{
-		
-		try {
-			Util.runScript("/home/hadoop/0000","1.cmd");
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} 
-	}
-	
+            return StringUtils.join(output,"\n");
+
+        } catch (Exception e) {
+            return "failed: "+e.getMessage();
+            //return null;
+        }
+    }
+    
+    @Deprecated
+    public static String command3(final String cmdline) 
+    {
+    	return command2(".",cmdline); 
+    }
+
+    /** Returns null if it failed for some reason.
+     */
+    
+    @Deprecated
+    public static String script4(final String scriptFile) 
+    {
+        try {
+    		File workingDir = new File(FilenameUtils.getFullPathNoEndSeparator(scriptFile));
+            Process process = new ProcessBuilder(new String[] {"bash", scriptFile})
+                    .redirectErrorStream(true)
+                    .directory(workingDir)
+                    .start();
+
+            ArrayList<String> output = new ArrayList<String>();
+            BufferedReader br = new BufferedReader(
+                new InputStreamReader(process.getInputStream()));
+            String line = null;
+            while ( (line = br.readLine()) != null )
+                output.add(line);
+            
+            //wait for completion
+            int retVal = process.waitFor();
+            
+            if (0 != retVal) //timeout?
+                return "failed: can not wait for porcess to finish "+String.valueOf(retVal);
+
+            return StringUtils.join(output,"\n");
+
+        } catch (Exception e) {
+            return "failed: "+e.getMessage();
+            //return null;
+        }
+    }
 }
+

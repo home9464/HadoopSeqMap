@@ -129,12 +129,10 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 		    		 * source: "hdfs://nn1:50017/user/hadoop/hadoop_jobs/<job_id>/input/0002" 
 		    		 * destionation: "/home/hadoop/job/hadoop@scheduler/1/input/0002_UUID"
 		    		 * */
-		    		//String localJobPath = hdfsJobPath.toString().
-		    		//		replaceAll(HDFS_scheme, "/").
-					//		replaceFirst("/user/","/home/")+"_"+UUID.randomUUID().toString().replaceAll("-", "");
+		    		String localJobPath = hdfsJobPath.toString().
+		    				replaceAll(HDFS_scheme, "/").
+							replaceFirst("/user/","/home/")+"_"+UUID.randomUUID().toString().replaceAll("-", "");
 		    		
-		    		String localJobPath = hdfsJobPath.toString().replaceAll(HDFS_scheme, "/").replaceFirst("/user/","/home/");
-							
 					FileSystem fs = FileSystem.get(conf);
 					fs.copyToLocalFile(true,hdfsJobPath, new Path(localJobPath),true);
 			        k = new Text(localJobPath+"/"+commandFileName);

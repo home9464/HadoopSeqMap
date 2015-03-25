@@ -38,19 +38,6 @@ public class Main
 	{
 		conf = new Configuration();
 		
-		// "$HOME/A/B/C" -> "/A/B/C"
-		/**
-		currentDir = System.getProperty("user.dir");
-		strippedDir = currentDir.replaceFirst(System.getProperty("user.home"),"");
-		hdfsBasePath = String.format("/user/%s",System.getProperty("user.name"));
-		hdfsInputPath = hdfsBasePath+strippedDir+"/input";
-		hdfsOutputPath = hdfsBasePath+strippedDir+"/output";
-		hdfsTmpPath = hdfsBasePath+strippedDir+"/tmp";
-		*/
-		
-		//hdfsBasePath =  '/user/hadoop/jobs/1234'
-		
-		
 		// '/user/hadoop/<hadoop_job_dirname>/22995/' ---> '/user/hadoop/<hadoop_job_dirname>/22995' 
 		hdfsBasePath = FilenameUtils.normalizeNoEndSeparator(cmdLine.getOptionValue("d"),true);
 		
@@ -70,72 +57,6 @@ public class Main
 		
 		statusUrl = cmdLine.getOptionValue("u");
 	}
-	public void configureHadoop(int numContainersPerNode)
-	{
-		float ratio = 0.9f;
-
-		long task_timeout_millsec = 259200000l; // 72 hours
-		
-		int memoryMbAvailable = (int) (ClusterStats.getInstance().getMemoryMbDN() * ratio);
-		
-		int cpuCores = ClusterStats.getInstance().getNumCpuCoresDN();
-		
-		//System.out.println("Memory:"+String.valueOf(memoryMbAvailable)+"MB,"+"CPU:"+ClusterStats.getNumCpuCoreDN());
-		
-		// int numContainersPerNode = memoryMbAvailable /
-		// minMemoryMbPerContainer;
-
-		// if (numContainersPerNode < 1)
-		// {
-		// throw new Exception(String.format(
-		// "Insufficient memory: Asked: %d, Available: %d",
-		// minMemoryMbPerContainer, memoryMbAvailable));
-		// }
-		int numCpuCoresPerContainer = ClusterStats.getInstance().getNumCpuCoresDN() / numContainersPerNode;
-		numCpuCoresPerContainer = numCpuCoresPerContainer >= 1? numCpuCoresPerContainer:1;
-		int memoryMbPerContainer = memoryMbAvailable / numContainersPerNode;
-		int mapreduce_map_java_opts = (int) (memoryMbPerContainer * ratio);
-		int mapreduce_reduce_java_opts = (int) (memoryMbPerContainer * ratio);
-
-		// http://docs.hortonworks.com/HDPDocuments/HDP2/HDP-2.0.6.0/bk_installing_manually_book/content/rpm-chap1-11.html
-
-		conf.setLong("mapreduce.task.timeout", task_timeout_millsec);
-		//conf.set("mapreduce.job.end-notification.url","");
-		
-		// Amount of total physical memory in a DataNode that can be allocated
-		// for containers.
-		/*
-		conf.setInt("yarn.nodemanager.resource.memory-mb", memoryMbAvailable);
-		System.out.println("yarn.nodemanager.resource.memory-mb:"+String.valueOf(memoryMbAvailable));
-
-		// Memory, max/min allocation for every container request at the RM
-		conf.setInt("yarn.scheduler.maximum-allocation-mb", memoryMbAvailable);
-		conf.setInt("yarn.scheduler.minimum-allocation-mb", (int) (memoryMbPerContainer));
-		
-		System.out.println("yarn.scheduler.maximum-allocation-mb:"+String.valueOf(memoryMbAvailable));
-		System.out.println("yarn.scheduler.minimum-allocation-mb:"+String.valueOf((int) (memoryMbPerContainer)));
-		
-
-		// CPU, max/mim allocation for every container request at the RM
-		conf.setInt("yarn.scheduler.maximum-allocation-vcores", ClusterStats.getNumCpuCoreDN());
-		conf.setInt("yarn.scheduler.minimum-allocation-vcores", numCpuCoresPerContainer);
-		
-		System.out.println("yarn.scheduler.maximum-allocation-vcores:"+String.valueOf(ClusterStats.getNumCpuCoreDN()));
-		System.out.println("yarn.scheduler.minimum-allocation-vcores:"+String.valueOf((int) (numCpuCoresPerContainer)));
-
-		// Memory, max/mim allocation for every container request at the RM
-		conf.setInt("mapreduce.map.memory.mb", memoryMbPerContainer);
-		conf.setInt("mapreduce.reduce.memory.mb", memoryMbAvailable);
-		System.out.println("mapreduce.map.memory.mb:"+String.valueOf(memoryMbPerContainer));
-		System.out.println("mapreduce.reduce.memory.mb:"+String.valueOf(memoryMbAvailable));
-
-		
-		conf.setInt("mapreduce.map.java.opts':'-Xmx%dm",mapreduce_map_java_opts);
-		conf.setInt("mapreduce.reduce.java.opts':'-Xmx%dm",mapreduce_reduce_java_opts);
-		*/
-		
-	}
-	
 	private void updateStatus(Job j)
 	{
 		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
@@ -154,7 +75,7 @@ public class Main
 		if (statusUrl != null)
 		{
 			try {
-				Util.command(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			} 
 			catch (Exception e) 
 			{
@@ -179,7 +100,7 @@ public class Main
 		{
 			try
 			{
-				Util.command(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			}
 			catch(Exception e)
 			{
@@ -205,7 +126,7 @@ public class Main
 		{
 			try
 			{
-				Util.command(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 			}
 			catch(Exception e)
 			{
@@ -225,13 +146,13 @@ public class Main
 		//'/user/hadoop/<hadoop_job_dirname>/22995' ---> 
 		
 		//delete all job files on DataNode
-		for (String s: ClusterStats.getInstance().getDatanodes())
+		for (String s: ClusterStats.getInstance().getDataNodes())
 		{
 			updateStatus("RUNNING","Clean up local job temp files from "+s);
 			//delete "job" folder on DataNode
 			try 
 			{
-				//Util.command(String.format("ssh %s 'rm -fr %s'",s,localBasePath));
+				//Util.runCommand(String.format("ssh %s 'rm -fr %s'",s,localBasePath));
 			}
 			catch (Exception e) 
 			{
@@ -246,7 +167,6 @@ public class Main
 		{
 			
 			fileSystem = FileSystem.newInstance(conf);
-			configureHadoop(1);
 			
 			Job job = Job.getInstance(conf, jobId);
 			job.setNumReduceTasks(0);

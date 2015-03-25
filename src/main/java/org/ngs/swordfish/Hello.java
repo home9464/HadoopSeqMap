@@ -15,28 +15,37 @@ import org.apache.commons.io.FileUtils;
 
 public class Hello {
 
-	public static void main(String[] args) throws ExecuteException, IOException {
+	public static void main(String[] args) throws ExecuteException, IOException, InterruptedException {
 		// TODO Auto-generated method stub
     	//String path = "/user/hadoop/hadoop_jobs/22995/";
 		//String hdfsBasePath = FilenameUtils.normalizeNoEndSeparator(path);
     	//System.out.println(StringUtils.replaceOnce(hdfsBasePath,"/user","/home"));
-    	runScript2("/home/hadoop/hello.sh");
+    	runScript4("/home/hadoop/0000/cmd.sh");
     	
 
 	}
 	
 	public static int runScript(String scriptFile) throws ExecuteException, IOException
 	{
-		File scriptDir = new File(FilenameUtils.getFullPath(scriptFile)+"/");
-		//System.out.println(scriptDir);
-		String scriptName = FilenameUtils.getName(scriptFile);
-		System.out.println(scriptName);
-		CommandLine cmd = new CommandLine(scriptName);
+		File workingDir = new File(FilenameUtils.getFullPathNoEndSeparator(scriptFile));
+		CommandLine cmd = CommandLine.parse("chmod +x "+scriptFile);
 		Executor exec = new DefaultExecutor();
-		exec.setWorkingDirectory(scriptDir);
+		exec.setWorkingDirectory(workingDir);
+		exec.execute(cmd);
+		cmd = CommandLine.parse(scriptFile);
 		return exec.execute(cmd);
 	}
-	public static int runScript2(String scriptFile)
+	
+	public static int runScript4(String scriptFile) throws IOException, InterruptedException
+	{
+		File workingDir = new File(FilenameUtils.getFullPathNoEndSeparator(scriptFile));
+		ProcessBuilder pb = new ProcessBuilder(scriptFile);
+		pb.directory(workingDir);
+		Process p = pb.start();
+		return p.waitFor();
+	}
+	 
+	public static int runScript2(String scriptFile) throws ExecuteException, IOException
 	{
 		//File scriptDir = new File(FilenameUtils.getFullPath(scriptFile));
 		File scriptDir = new File("/home/hadoop/tmp");
@@ -45,23 +54,8 @@ public class Hello {
 	    defaultExecutor.setExitValue(0);
 	    ExecuteWatchdog watchdog = new ExecuteWatchdog(120000);
 	    defaultExecutor.setWatchdog(watchdog);
-	    
 	    defaultExecutor.setWorkingDirectory(scriptDir);
-	    try 
-	    {
-	    	return defaultExecutor.execute(oCmdLine);
-	    } 
-	    catch (ExecuteException e) 
-	    {
-	    	System.err.println("Execution failed.");
-	        e.printStackTrace();
-	    } 
-	    catch (IOException e) 
-	    {
-	    	System.err.println("permission denied.");
-	        e.printStackTrace();
-	    }
-		return 0;
+	    return defaultExecutor.execute(oCmdLine);
 	}
 	
 	public static int runScript3(String scriptFile)

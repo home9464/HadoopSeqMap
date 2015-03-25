@@ -21,7 +21,7 @@ public class ClusterStats
 	{
 		getDataNodes();
 	}
-	private void getDataNodes()
+	public List<String> getDataNodes()
 	{
 		Configuration conf = new Configuration(); 
 		try
@@ -62,6 +62,7 @@ public class ClusterStats
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return datanodes;
 		
 	}
 	public static ClusterStats getInstance()
@@ -71,6 +72,7 @@ public class ClusterStats
 		return instance;
 	}
 
+	/*
     private int getMemoryMb(String host)
 	{
 		int MB = 1024;
@@ -84,7 +86,7 @@ public class ClusterStats
 			{
 				command = String.format("ssh %s \"%s\"",host,command);
 			}
-			matcher = pattern.matcher(Util.command(command));
+			matcher = pattern.matcher(Util.runCommand(command));
 			if (matcher.find()) 
 			{
 				return Integer.parseInt(matcher.group(1))/MB;
@@ -107,7 +109,7 @@ public class ClusterStats
 			{
 				command = String.format("ssh %s \"%s\"",host,command);
 			}
-			return Integer.parseInt(Util.command(command));
+			return Integer.parseInt(Util.runCommand(command));
 		} 
 		catch (Exception e) 
 		{
@@ -126,7 +128,7 @@ public class ClusterStats
 		Matcher matcher;
 		try 
 		{
-			matcher = pattern.matcher(Util.command(commands[0]));
+			matcher = pattern.matcher(Util.runCommand(commands[0]));
 			if (matcher.find()) 
 			{
 				return Integer.parseInt(matcher.group(1))/MB;
@@ -141,7 +143,7 @@ public class ClusterStats
 		
 		pattern = Pattern.compile("\\s*(\\d+)\\s+.*total memory");
 		try {
-			matcher = pattern.matcher(Util.command(commands[1]));
+			matcher = pattern.matcher(Util.runCommand(commands[1]));
 			if (matcher.find()) 
 			{
 				return Integer.parseInt(matcher.group(1))/MB; 
@@ -154,7 +156,7 @@ public class ClusterStats
 		//use "free -m"
 		pattern = Pattern.compile(".*Mem:\\s*(\\d+)\\s+.*");
 		try {
-			matcher = pattern.matcher(Util.command(commands[2]));
+			matcher = pattern.matcher(Util.runCommand(commands[2]));
 			if (matcher.find()) 
 			{
 				return Integer.parseInt(matcher.group(1)); 
@@ -172,43 +174,32 @@ public class ClusterStats
     	return datanodes;
     }
 
-    /**
-     * Get the available memory in MB of NameNode
-     * */
+    //Get the available memory in MB of NameNode
 	public int getMemoryMbNN()
 	{
 		return getMemoryMb(null);
 	}
 
 
-    /**
-     * Get the available memory in MB of DataNode
-     * */
+    //Get the available memory in MB of DataNode
 	public int getMemoryMbDN()
 	{
 		return getMemoryMb(datanodes.get(0));
 	}	
 	
-
-    /**
-     * Get the number of CPU cores of NameNode
-     * */
+    //Get the number of CPU cores of NameNode
 	public int getNumCpuCoresNN()
 	{
 		return this.getNumCpuCores(null);
 	}
 	
-    /**
-     * Get the number of CPU cores of each DataNode
-     * */
+    //Get the number of CPU cores of each DataNode
 	public int getNumCpuCoresDN()
 	{
 		return this.getNumCpuCores(datanodes.get(0));
 	}
 	
-    /**
-     * Get the number of DataNodes
-     * */
+    //Get the number of DataNodes
 	public int getNumDN()
 	{
 		return datanodes.size();
@@ -219,7 +210,7 @@ public class ClusterStats
 		System.out.println("HELLO");
 		try
 		{
-			System.out.println(Util.command("/home/hadoop/0000/","2.sh"));
+			System.out.println(Util.runCommand("/home/hadoop/0000/","2.sh"));
 		}
 		catch (Exception e)
 		{
@@ -228,4 +219,6 @@ public class ClusterStats
 		}
 		ClusterStats.getInstance().getMemoryMbDN();
 	}
+	
+	*/
 }
