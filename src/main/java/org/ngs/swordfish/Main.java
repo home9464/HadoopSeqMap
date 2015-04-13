@@ -222,16 +222,23 @@ public class Main
 	private void deleteLocalJobDir()
 	{
 		
+		
 		//'/user/hadoop/<hadoop_job_dirname>/22995' ---> 
 		
 		//delete all job files on DataNode
-		for (String s: ClusterStats.getInstance().getDatanodes())
+		for (final String s: ClusterStats.getInstance().getDatanodes())
 		{
 			updateStatus("RUNNING","Clean up local job temp files from "+s);
 			//delete "job" folder on DataNode
 			try 
 			{
-				//Util.command(String.format("ssh %s 'rm -fr %s'",s,localBasePath));
+				new Thread(new Runnable() 
+				{
+				     public void run() 
+				     {
+							Util.command(String.format("ssh %s 'rm -fr %s'",s,localBasePath));
+				     }
+				}).start();
 			}
 			catch (Exception e) 
 			{
