@@ -56,13 +56,17 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			//run the command file as a script
 			Configuration conf = context.getConfiguration();
 			
-			System.out.println("#CMD#:"+workingPath+"/"+commandFileName);
+			//should enable log aggregation
 			
-			
+			//default location for "stderr" 
 			//hadoop-2.6.0/logs/userlogs/application_1425921303294_0026/container_1425921303294_0026_01_000002/stderr
-			//hadoop-2.6.0/logs/userlogs/application_1425921303294_0030/container_1425921303294_0030_01_000002/stderr
 			
-			System.err.println("#ERR#"+Util.script(workingPath,commandFileName));
+			//default location for "stdout" 
+			//hadoop-2.6.0/logs/userlogs/application_1425921303294_0026/container_1425921303294_0026_01_000002/stdout
+
+			//run the script
+			int retVal = Util.runScript(commandFile);
+			System.out.println("#RET#"+String.valueOf(retVal));
 			
 			FileSystem fs = FileSystem.newInstance(conf);
 		
@@ -99,17 +103,5 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			System.err.println("##ERROR##:"+e);
 			e.printStackTrace();
 		}
-		finally
-		{
-			
-			try {
-				//Util.command(String.format("rm -fr %s",workingPath));
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				System.err.println("##ERROR##:"+e);
-				e.printStackTrace();
-			}
-		}
-
 	}
 }
