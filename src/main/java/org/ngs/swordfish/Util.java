@@ -96,7 +96,32 @@ public class Util
         executor.execute(cmd);
         return  StringUtils.join(output.getLines(),"\n"); 
     }
-	
+
+	/**
+	 * run a command and capture it's output as return value
+	 * 
+	 * */
+	public static void postStatus(String statusUrl, String user, String password,String state,String info)
+	{
+		String content = String.format("-d \"state=%s\" -d \"info=%s\"",state,info);
+		
+		if (statusUrl != null)
+		{
+			try
+			{
+				Util.runCommand(String.format("curl -u %s:%s -X PUT -s %s %s",user,password,content,statusUrl));
+			}
+			catch(Exception e)
+			{
+				System.err.println(e);
+			}
+		}
+		else
+		{
+			System.err.println(content);
+		}
+    }
+
 	public static String getCommonPrefix(String s1,String s2)
 	{
 		String[] sz = new String[2];

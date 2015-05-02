@@ -38,6 +38,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		/* 1.cmd */
 		String commandFileName  = FilenameUtils.getName(commandFile);
 
+		Configuration conf = context.getConfiguration();
 		
 		try
 		{
@@ -54,7 +55,6 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			}
 			
 			//run the command file as a script
-			Configuration conf = context.getConfiguration();
 			
 			//should enable log aggregation
 			
@@ -66,7 +66,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 
 			//run the script
 			int retVal = Util.runScript(commandFile);
-			System.out.println("#RET#"+String.valueOf(retVal));
+			//System.out.println("#RET#"+String.valueOf(retVal));
 			
 			FileSystem fs = FileSystem.newInstance(conf);
 		
@@ -99,9 +99,14 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		}
 		catch (Exception e)
 		{
+			Util.postStatus(conf.get("statusUrl"), 
+					conf.get("statusUrlUser"),
+					conf.get("statusUrlPassword"),
+					"Error",
+					e.toString());
+
 			// TODO Auto-generated catch block
 			System.err.println("##ERROR##:"+e);
-			e.printStackTrace();
 		}
 	}
 }

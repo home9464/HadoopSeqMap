@@ -30,6 +30,8 @@ public class Main
 	
 	private String localBasePath;
 	private String statusUrl;
+	private String statusUrlUser;
+	private String statusUrlPassword;
 	
 	private Configuration conf;
 	private FileSystem fileSystem;
@@ -55,89 +57,35 @@ public class Main
 		//jobId = 1234
 		jobId = FilenameUtils.getName(hdfsBasePath);
 		
-		statusUrl = cmdLine.getOptionValue("u");
+		statusUrl = cmdLine.getOptionValue("s");
+		
+		statusUrlUser = cmdLine.getOptionValue("u");
+		
+		statusUrlPassword = cmdLine.getOptionValue("p");
+		
 	}
+	
 	private void updateStatus(Job j)
 	{
 		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
-		String jsonContent="";
-		try {
-			jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobMessage\":\"%s\"}",
+		try
+		{
+			String jsonContent= String.format("{\"uuid\":\"%s\",\"state\":\"%s\",\"info\":\"%s\"}",
 					j.getJobID().toString(),
 					j.getJobState().toString(),
 					"Running job on cluster");
-		} catch (Exception e1) 
-		{
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} 
-		
-		if (statusUrl != null)
-		{
-			try {
-				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
-			} 
-			catch (Exception e) 
-			{
-				System.err.println(e);
-			} 
+			Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 		}
-		else
+		catch(Exception e)
 		{
-			System.out.println(jsonContent);
+			System.err.println(e);
+
 		}
 	}
 	
-	private void updateStatus(String jobState, String jobProgress,String jobMessage)
+	private void updateStatus(String state, String info)
 	{
-		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
-		String jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobProgress\":\"%s\",\"jobMessage\":\"%s\"}",
-				jobId,
-				jobState,
-				jobProgress,
-				jobMessage);
-		if (statusUrl != null)
-		{
-			try
-			{
-				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
-			}
-			catch(Exception e)
-			{
-				System.err.println(e);
-
-			}
-			
-		}
-		else
-		{
-			System.out.println(jsonContent);
-		}
-	}
-
-	private void updateStatus(String jobState, String jobMessage)
-	{
-		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
-		String jsonContent = String.format("{\"jobId\":\"%s\",\"jobState\":\"%s\",\"jobMessage\":\"%s\"}",
-				jobId,
-				jobState,
-				jobMessage);
-		if (statusUrl != null)
-		{
-			try
-			{
-				Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
-			}
-			catch(Exception e)
-			{
-				System.err.println(e);
-			}
-		}
-		else
-		{
-			System.out.println(jsonContent);
-		}
-		
+		Util.postStatus(this.statusUrl, this.statusUrlUser,this.statusUrlPassword,state,info);
 	}
 	
 	private void deleteLocalJobDir()
@@ -149,7 +97,7 @@ public class Main
 		//delete all job files on DataNode
 		for (final String s: ClusterStats.getInstance().getDataNodes())
 		{
-			updateStatus("RUNNING","Clean up local job temp files from "+s);
+			updateStatus("Running","Clean up local job temp files from "+s);
 			//delete "job" folder on DataNode
 			try 
 			{
@@ -183,6 +131,10 @@ public class Main
 			
 			fileSystem = FileSystem.newInstance(conf);
 			
+			conf.set("statusUrl",this.statusUrl);
+			conf.set("statusUrlUser",this.statusUrlUser);
+			conf.set("statusUrlPassword",this.statusUrlPassword);
+			
 			Job job = Job.getInstance(conf, jobId);
 			job.setNumReduceTasks(0);
 			job.setJarByClass(Main.class);
@@ -205,11 +157,11 @@ public class Main
 			
 			FileOutputFormat.setOutputPath(job, new Path(this.hdfsTmpPath));
 			
-			updateStatus("RUNNING","Submit job to cluster");
+			updateStatus("Running","Submit job to cluster");
 			job.submit(); 			
 			//append hadoop app's id
 			//mc.updateStatus(jobId+":"+job.getJobID().toString(),"RUNNING","Start hadoop job");
-			updateStatus("RUNNING","Start hadoop job");
+			updateStatus("Running","Start hadoop job");
 			
 			while(!job.isComplete())
 			{
@@ -231,11 +183,15 @@ public class Main
 	
 	public static void main(String[] args) throws Exception
 	{
-		Option HdfsDir = OptionBuilder.hasArg().isRequired().create( "d" );
-		Option PostUrl = OptionBuilder.hasArg().create( "u" );
+		Option hdfsDir = OptionBuilder.hasArg().isRequired().create( "d" );
+		Option sUrl = OptionBuilder.hasArg().create( "s" );
+		Option sUrlUser= OptionBuilder.hasArg().create( "u" );
+		Option sPassword = OptionBuilder.hasArg().create( "p" );
 		Options options = new Options();
-		options.addOption(HdfsDir);
-		options.addOption(PostUrl);
+		options.addOption(hdfsDir);
+		options.addOption(sUrl);
+		options.addOption(sUrlUser);
+		options.addOption(sPassword);
 		CommandLineParser parser = new BasicParser();
 		CommandLine  cmdLine = parser.parse(options, args);
 		new Main(cmdLine).start();
