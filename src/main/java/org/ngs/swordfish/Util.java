@@ -101,7 +101,7 @@ public class Util
 	 * run a command and capture it's output as return value
 	 * 
 	 * */
-	public static void postStatus(String statusUrl, String user, String password,String state,String info)
+	public static void putStatus(String statusUrl, String user, String password,String state,String info)
 	{
 		String content = String.format("-d \"state=%s\" -d \"info=%s\"",state,info);
 		
@@ -109,7 +109,8 @@ public class Util
 		{
 			try
 			{
-				Util.runCommand(String.format("curl -u %s:%s -X PUT -s %s %s",user,password,content,statusUrl));
+				//System.err.println(String.format("curl -u %s:%s -X PUT -s %s %s",user,password,content,statusUrl));
+				Util.command3(String.format("curl -u %s:%s -X PUT -s %s %s",user,password,content,statusUrl));
 			}
 			catch(Exception e)
 			{
@@ -120,6 +121,7 @@ public class Util
 		{
 			System.err.println(content);
 		}
+		
     }
 
 	public static String getCommonPrefix(String s1,String s2)
@@ -224,7 +226,6 @@ public class Util
 		}
 		
 	}
-    @Deprecated
     public static String command2(final String directory,final String cmdline) 
     {
         try {
@@ -255,7 +256,6 @@ public class Util
         }
     }
     
-    @Deprecated
     public static String command3(final String cmdline) 
     {
     	return command2(".",cmdline); 

@@ -15,13 +15,17 @@ import org.apache.commons.io.FileUtils;
 
 public class Hello {
 
-	public static void main(String[] args) throws ExecuteException, IOException, InterruptedException {
+	public static void main(String[] args) throws Exception{
 		// TODO Auto-generated method stub
     	//String path = "/user/hadoop/hadoop_jobs/22995/";
 		//String hdfsBasePath = FilenameUtils.normalizeNoEndSeparator(path);
     	//System.out.println(StringUtils.replaceOnce(hdfsBasePath,"/user","/home"));
-    	runScript4("/home/hadoop/0000/cmd.sh");
-    	
+    	//runScript4("/home/hadoop/0000/cmd.sh");
+		String command = "curl -u hello:world -X PUT -s -d \"state=OOOKKeweqwe\" -d \"info=I am fine\" http://192.168.1.16:5000/jobs/May-03-2015-11-24-31-05dfab46d18a3437";
+		Util.command3(command);
+		//String url="http://192.168.1.16:5000/jobs/May-03-2015-11-24-31-05dfab46d18a3437";
+		//Util.putStatus(url,"hello","world","OK","I am fine");
+		System.out.println("OK");
 
 	}
 	

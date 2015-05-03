@@ -85,7 +85,7 @@ public class Main
 	
 	private void updateStatus(String state, String info)
 	{
-		Util.postStatus(this.statusUrl, this.statusUrlUser,this.statusUrlPassword,state,info);
+		Util.putStatus(this.statusUrl, this.statusUrlUser,this.statusUrlPassword,state,info);
 	}
 	
 	private void deleteLocalJobDir()
@@ -196,4 +196,6 @@ public class Main
 		CommandLine  cmdLine = parser.parse(options, args);
 		new Main(cmdLine).start();
 	}
+	
+	
 }

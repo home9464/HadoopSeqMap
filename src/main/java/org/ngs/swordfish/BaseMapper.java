@@ -99,7 +99,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		}
 		catch (Exception e)
 		{
-			Util.postStatus(conf.get("statusUrl"), 
+			Util.putStatus(conf.get("statusUrl"), 
 					conf.get("statusUrlUser"),
 					conf.get("statusUrlPassword"),
 					"Error",
