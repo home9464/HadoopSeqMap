@@ -157,11 +157,11 @@ public class Main
 			
 			FileOutputFormat.setOutputPath(job, new Path(this.hdfsTmpPath));
 			
-			updateStatus("Running","Submit job to cluster");
+			//updateStatus("Running","Submit job to cluster");
 			job.submit(); 			
 			//append hadoop app's id
 			//mc.updateStatus(jobId+":"+job.getJobID().toString(),"RUNNING","Start hadoop job");
-			updateStatus("Running","Start hadoop job");
+			//updateStatus("Running","Start hadoop job");
 			
 			while(!job.isComplete())
 			{
