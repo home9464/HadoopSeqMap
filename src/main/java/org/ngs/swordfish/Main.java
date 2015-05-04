@@ -74,7 +74,7 @@ public class Main
 					j.getJobID().toString(),
 					j.getJobState().toString(),
 					"Running job on cluster");
-			Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
+			//Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 		}
 		catch(Exception e)
 		{
@@ -97,7 +97,7 @@ public class Main
 		//delete all job files on DataNode
 		for (final String s: ClusterStats.getInstance().getDataNodes())
 		{
-			updateStatus("Running","Clean up local job temp files from "+s);
+			//updateStatus("Running","Clean up local job temp files from "+s);
 			//delete "job" folder on DataNode
 			try 
 			{
