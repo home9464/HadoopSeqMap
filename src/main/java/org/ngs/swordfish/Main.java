@@ -176,7 +176,7 @@ public class Main
 		}		
 		finally
 		{
-			deleteLocalJobDir();
+			//deleteLocalJobDir();
 		}
 		
 	}

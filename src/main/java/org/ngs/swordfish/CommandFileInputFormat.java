@@ -134,7 +134,10 @@ public class CommandFileInputFormat extends FileInputFormat<Text, Text>
 							replaceFirst("/user/","/home/")+"_"+UUID.randomUUID().toString().replaceAll("-", "");
 		    		
 					FileSystem fs = FileSystem.get(conf);
-					fs.copyToLocalFile(true,hdfsJobPath, new Path(localJobPath),true);
+					
+					boolean delSrc = false; // delete the files in HDFS
+					boolean useRawLocalFileSystem = true; // no .crc files
+					fs.copyToLocalFile(delSrc,hdfsJobPath, new Path(localJobPath),useRawLocalFileSystem);
 			        k = new Text(localJobPath+"/"+commandFileName);
 					v = new Text("");
 					processed = true;
