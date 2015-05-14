@@ -91,17 +91,12 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 				}
 			}
 			
-			
 			fs.mkdirs(hdfsOutputPath);
 			
 			for(String output: outputFiles)
 			{
-					//transfer outputs from DataNode to HDFS
-				Util.putStatus(conf.get("statusUrl"), 
-						conf.get("statusUrlUser"),
-						conf.get("statusUrlPassword"),
-						"Running",
-						"Transfer output from "+output+" to "+hdfsOutputPath.toString());
+				//transfer outputs from DataNode to HDFS
+				//Util.putStatus(conf.get("statusUrl"), "Running","Transfer output from "+output+" to "+hdfsOutputPath.toString());
 				fs.copyFromLocalFile(new Path(output), hdfsOutputPath);
 			}
 			successed = true;
@@ -109,13 +104,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		}
 		catch (Exception e)
 		{
-			Util.putStatus(conf.get("statusUrl"), 
-					conf.get("statusUrlUser"),
-					conf.get("statusUrlPassword"),
-					"Error",
-					e.toString());
-
-			// TODO Auto-generated catch block
+			Util.putStatusDebug(conf.get("statusUrl"),"Error",e.toString());
 			System.err.println("##ERROR##:"+e);
 		}
 		finally
@@ -130,11 +119,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 				}
 				catch (Exception e)
 				{
-					Util.putStatus(conf.get("statusUrl"), 
-								conf.get("statusUrlUser"),
-								conf.get("statusUrlPassword"),
-								"Error",
-								e.toString());
+					Util.putStatusDebug(conf.get("statusUrl"), "Error",e.toString());
 				}
 			}
 		}

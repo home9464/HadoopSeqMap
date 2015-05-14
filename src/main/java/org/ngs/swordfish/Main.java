@@ -59,21 +59,15 @@ public class Main
 		
 		statusUrl = cmdLine.getOptionValue("s");
 		
-		statusUrlUser = cmdLine.getOptionValue("u");
-		
-		statusUrlPassword = cmdLine.getOptionValue("p");
-		
 	}
 	
 	private void updateStatus(Job j)
 	{
 		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
+		//j.getJobID().toString(),
+		//j.getJobState().toString(),
 		try
 		{
-			String jsonContent= String.format("{\"uuid\":\"%s\",\"state\":\"%s\",\"info\":\"%s\"}",
-					j.getJobID().toString(),
-					j.getJobState().toString(),
-					"Running job on cluster");
 			//Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 		}
 		catch(Exception e)
@@ -83,10 +77,6 @@ public class Main
 		}
 	}
 	
-	private void updateStatus(String state, String info)
-	{
-		Util.putStatus(this.statusUrl, this.statusUrlUser,this.statusUrlPassword,state,info);
-	}
 	
 	private void deleteLocalJobDir()
 	{
@@ -132,8 +122,6 @@ public class Main
 			fileSystem = FileSystem.newInstance(conf);
 			
 			conf.set("statusUrl",this.statusUrl);
-			conf.set("statusUrlUser",this.statusUrlUser);
-			conf.set("statusUrlPassword",this.statusUrlPassword);
 			
 			Job job = Job.getInstance(conf, jobId);
 			job.setNumReduceTasks(0);
@@ -171,8 +159,7 @@ public class Main
 			
 		}
 		catch (Exception e) {
-			updateStatus("Failed",e.getMessage());
-			throw new Exception(e.getMessage());
+			Util.putStatusError(this.statusUrl, "Failed",e.getMessage());
 		}		
 		finally
 		{
@@ -185,13 +172,9 @@ public class Main
 	{
 		Option hdfsDir = OptionBuilder.hasArg().isRequired().create( "d" );
 		Option sUrl = OptionBuilder.hasArg().create( "s" );
-		Option sUrlUser= OptionBuilder.hasArg().create( "u" );
-		Option sPassword = OptionBuilder.hasArg().create( "p" );
 		Options options = new Options();
 		options.addOption(hdfsDir);
 		options.addOption(sUrl);
-		options.addOption(sUrlUser);
-		options.addOption(sPassword);
 		CommandLineParser parser = new BasicParser();
 		CommandLine  cmdLine = parser.parse(options, args);
 		new Main(cmdLine).start();

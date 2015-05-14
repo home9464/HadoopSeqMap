@@ -8,7 +8,9 @@ import java.io.InputStreamReader;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -100,17 +102,27 @@ public class Util
 	/**
 	 * run a command and capture it's output as return value
 	 * 
+	 * @level:
+	 * CRITICAL 50
+	 * ERROR    40
+	 * WARNING  30
+	 * INFO    20
+	 * DEBUG   10
+	 * NOTSET  0
+	 * 
 	 * */
-	public static void putStatus(String statusUrl, String user, String password,String state,String info)
+	public static void putStatus(String statusUrl,String state,String info,int level)
 	{
-		String content = String.format("-d \"state=%s\" -d \"info=%s\"",state,info);
-		
+		SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	    String strDate = sdfDate.format(new Date());
+	    String enrichedInfo = String.format("%s %d %s",strDate,level,info);
+		String content = String.format("-d \"state=%s\" -d \"info=%s\"",state,enrichedInfo);
 		if (statusUrl != null)
 		{
 			try
 			{
 				//System.err.println(String.format("curl -u %s:%s -X PUT -s %s %s",user,password,content,statusUrl));
-				Util.command3(String.format("curl -u %s:%s -X PUT -s %s %s",user,password,content,statusUrl));
+				Util.command3(String.format("curl -X PUT -s %s %s", content,statusUrl));
 			}
 			catch(Exception e)
 			{
@@ -122,6 +134,27 @@ public class Util
 			System.err.println(content);
 		}
 		
+    }
+
+
+	public static void putStatusDebug(String statusUrl,String state,String info)
+	{
+		putStatus(statusUrl,state,info,10);
+    }
+	
+	public static void putStatusInfo(String statusUrl,String state,String info)
+	{
+		putStatus(statusUrl,state,info,20);
+    }
+
+	public static void putStatusWarning(String statusUrl,String state,String info)
+	{
+		putStatus(statusUrl,state,info,30);
+    }
+
+	public static void putStatusError(String statusUrl,String state,String info)
+	{
+		putStatus(statusUrl,state,info,40);
     }
 
 	public static String getCommonPrefix(String s1,String s2)
