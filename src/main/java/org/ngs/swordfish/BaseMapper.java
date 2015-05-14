@@ -35,13 +35,24 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		//strippedPath: job/hadoop@scheduler/1/input/0002
 		String strippedPath = workingPath.replaceFirst(System.getProperty("user.home"),"");
 
+		/* /user/hadoop/job/hadoop@scheduler/1/output/0002 */
+		String outputPath = String.format("/user/%s/%s", System.getProperty("user.name"), strippedPath).replace("/input/", "/output/");
+		
+		Path hdfsOutputPath = new Path(outputPath);
+		
 		/* 1.cmd */
 		String commandFileName  = FilenameUtils.getName(commandFile);
 
+		boolean successed = false;
+		
 		Configuration conf = context.getConfiguration();
+		
+		FileSystem fs = null;
 		
 		try
 		{
+
+			fs = FileSystem.newInstance(conf);
 
 			//use timestamp to determine output files  - newer files are outputs
 			long  timeStamp = 0L;
@@ -68,31 +79,24 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			int retVal = Util.runScript(commandFile);
 			//System.out.println("#RET#"+String.valueOf(retVal));
 			
-			FileSystem fs = FileSystem.newInstance(conf);
 		
 			//list all files under working directory, again
-			allFiles = new File(workingPath).listFiles();		
+			allFiles = new File(workingPath).listFiles();
 			List<String> outputFiles = new ArrayList<>();
 			for(File f:allFiles)
 			{
-				if(f.lastModified() > timeStamp)
+				if(f.lastModified() > timeStamp && f.length()>0)
 				{
 					outputFiles.add(f.getAbsolutePath());
 				}
 			}
 			
-			/* /user/hadoop/job/hadoop@scheduler/1/output/0002 */
-			String outputPath = String.format("/user/%s/%s", 
-					System.getProperty("user.name"),
-					strippedPath).replace("/input/", "/output/");
-			
-			Path hdfsOutputPath = new Path(outputPath);
 			
 			fs.mkdirs(hdfsOutputPath);
 			
 			for(String output: outputFiles)
 			{
-				//transfer outputs from DataNode to HDFS
+					//transfer outputs from DataNode to HDFS
 				Util.putStatus(conf.get("statusUrl"), 
 						conf.get("statusUrlUser"),
 						conf.get("statusUrlPassword"),
@@ -100,6 +104,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 						"Transfer output from "+output+" to "+hdfsOutputPath.toString());
 				fs.copyFromLocalFile(new Path(output), hdfsOutputPath);
 			}
+			successed = true;
 			
 		}
 		catch (Exception e)
@@ -112,6 +117,26 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 
 			// TODO Auto-generated catch block
 			System.err.println("##ERROR##:"+e);
+		}
+		finally
+		{
+			//if a job failed (or killed), the partial outputs should not be transfered back
+			if (!successed && fs!=null)
+			{
+				boolean recursive = true; 
+				try
+				{
+					fs.delete(hdfsOutputPath, recursive);
+				}
+				catch (Exception e)
+				{
+					Util.putStatus(conf.get("statusUrl"), 
+								conf.get("statusUrlUser"),
+								conf.get("statusUrlPassword"),
+								"Error",
+								e.toString());
+				}
+			}
 		}
 	}
 }
