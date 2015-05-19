@@ -25,7 +25,14 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 	 * */
 	public void map(Text key, Text value, Context context)
 	{
+		//"Hadoop speculative task execution" will cause a problem here.
+		//mapreduce.map.speculative=false
+		//mapreduce.reduce.speculative=false
+		
+		
 		/* commandFile: /home/hadoop/job/hadoop@scheduler/1/input/0002/1.cmd */
+		
+		
 		String commandFile = key.toString();
 
 		
@@ -45,9 +52,16 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 
 		boolean successed = false;
 		
-		Configuration conf = context.getConfiguration();
+		final Configuration conf = context.getConfiguration();
 		
 		FileSystem fs = null;
+
+		// Runtime.getRuntime().addShutdownHook(new Thread() {
+		//	@Override
+        //   public void run() {
+		//		Util.putStatusDebug(conf.get("statusUrl"), "Error","Inside Add Shutdown Hook");
+        //   }   
+        //}); 
 		
 		try
 		{
