@@ -94,8 +94,6 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			{
 				//transfer outputs from DataNode to HDFS
 				Util.putStatus(conf.get("statusUrl"), 
-						conf.get("statusUrlUser"),
-						conf.get("statusUrlPassword"),
 						"Running",
 						"Transfer output from "+output+" to "+hdfsOutputPath.toString());
 				fs.copyFromLocalFile(new Path(output), hdfsOutputPath);
@@ -105,8 +103,6 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		catch (Exception e)
 		{
 			Util.putStatus(conf.get("statusUrl"), 
-					conf.get("statusUrlUser"),
-					conf.get("statusUrlPassword"),
 					"Error",
 					e.toString());
 

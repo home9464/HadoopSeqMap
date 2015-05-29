@@ -30,8 +30,6 @@ public class Main
 	
 	private String localBasePath;
 	private String statusUrl;
-	private String statusUrlUser;
-	private String statusUrlPassword;
 	
 	private Configuration conf;
 	private FileSystem fileSystem;
@@ -59,10 +57,6 @@ public class Main
 		
 		statusUrl = cmdLine.getOptionValue("s");
 		
-		statusUrlUser = cmdLine.getOptionValue("u");
-		
-		statusUrlPassword = cmdLine.getOptionValue("p");
-		
 	}
 	
 	private void updateStatus(Job j)
@@ -85,7 +79,7 @@ public class Main
 	
 	private void updateStatus(String state, String info)
 	{
-		Util.putStatus(this.statusUrl, this.statusUrlUser,this.statusUrlPassword,state,info);
+		Util.putStatus(this.statusUrl, state,info);
 	}
 	
 	private void deleteLocalJobDir()
@@ -132,8 +126,6 @@ public class Main
 			fileSystem = FileSystem.newInstance(conf);
 			
 			conf.set("statusUrl",this.statusUrl);
-			conf.set("statusUrlUser",this.statusUrlUser);
-			conf.set("statusUrlPassword",this.statusUrlPassword);
 			
 			Job job = Job.getInstance(conf, jobId);
 			job.setNumReduceTasks(0);
@@ -185,13 +177,9 @@ public class Main
 	{
 		Option hdfsDir = OptionBuilder.hasArg().isRequired().create( "d" );
 		Option sUrl = OptionBuilder.hasArg().create( "s" );
-		Option sUrlUser= OptionBuilder.hasArg().create( "u" );
-		Option sPassword = OptionBuilder.hasArg().create( "p" );
 		Options options = new Options();
 		options.addOption(hdfsDir);
 		options.addOption(sUrl);
-		options.addOption(sUrlUser);
-		options.addOption(sPassword);
 		CommandLineParser parser = new BasicParser();
 		CommandLine  cmdLine = parser.parse(options, args);
 		new Main(cmdLine).start();
