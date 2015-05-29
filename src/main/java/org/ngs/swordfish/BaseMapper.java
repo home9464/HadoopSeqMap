@@ -25,7 +25,14 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 	 * */
 	public void map(Text key, Text value, Context context)
 	{
+		//"Hadoop speculative task execution" will cause a problem here.
+		//mapreduce.map.speculative=false
+		//mapreduce.reduce.speculative=false
+		
+		
 		/* commandFile: /home/hadoop/job/hadoop@scheduler/1/input/0002/1.cmd */
+		
+		
 		String commandFile = key.toString();
 
 		
@@ -35,13 +42,31 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 		//strippedPath: job/hadoop@scheduler/1/input/0002
 		String strippedPath = workingPath.replaceFirst(System.getProperty("user.home"),"");
 
+		/* /user/hadoop/job/hadoop@scheduler/1/output/0002 */
+		String outputPath = String.format("/user/%s/%s", System.getProperty("user.name"), strippedPath).replace("/input/", "/output/");
+		
+		Path hdfsOutputPath = new Path(outputPath);
+		
 		/* 1.cmd */
 		String commandFileName  = FilenameUtils.getName(commandFile);
 
-		Configuration conf = context.getConfiguration();
+		boolean successed = false;
+		
+		final Configuration conf = context.getConfiguration();
+		
+		FileSystem fs = null;
+
+		// Runtime.getRuntime().addShutdownHook(new Thread() {
+		//	@Override
+        //   public void run() {
+		//		Util.putStatusDebug(conf.get("statusUrl"), "Error","Inside Add Shutdown Hook");
+        //   }   
+        //}); 
 		
 		try
 		{
+
+			fs = FileSystem.newInstance(conf);
 
 			//use timestamp to determine output files  - newer files are outputs
 			long  timeStamp = 0L;
@@ -68,45 +93,50 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			int retVal = Util.runScript(commandFile);
 			//System.out.println("#RET#"+String.valueOf(retVal));
 			
-			FileSystem fs = FileSystem.newInstance(conf);
 		
 			//list all files under working directory, again
-			allFiles = new File(workingPath).listFiles();		
+			allFiles = new File(workingPath).listFiles();
 			List<String> outputFiles = new ArrayList<>();
 			for(File f:allFiles)
 			{
-				if(f.lastModified() > timeStamp)
+				if(f.lastModified() > timeStamp && f.length()>0)
 				{
 					outputFiles.add(f.getAbsolutePath());
 				}
 			}
-			
-			/* /user/hadoop/job/hadoop@scheduler/1/output/0002 */
-			String outputPath = String.format("/user/%s/%s", 
-					System.getProperty("user.name"),
-					strippedPath).replace("/input/", "/output/");
-			
-			Path hdfsOutputPath = new Path(outputPath);
 			
 			fs.mkdirs(hdfsOutputPath);
 			
 			for(String output: outputFiles)
 			{
 				//transfer outputs from DataNode to HDFS
-				Util.putStatus(conf.get("statusUrl"), 
+				Util.putStatusDebug(conf.get("statusUrl"), 
 						"Running","Transfer output from "+output+" to "+hdfsOutputPath.toString());
 				fs.copyFromLocalFile(new Path(output), hdfsOutputPath);
 			}
+			successed = true;
 			
 		}
 		catch (Exception e)
 		{
-			Util.putStatus(conf.get("statusUrl"), 
-					"Error",
-					e.toString());
-
-			// TODO Auto-generated catch block
+			Util.putStatusError(conf.get("statusUrl"),"Error",e.toString());
 			System.err.println("##ERROR##:"+e);
+		}
+		finally
+		{
+			//if a job failed (or killed), the partial outputs should not be transfered back
+			if (!successed && fs!=null)
+			{
+				boolean recursive = true; 
+				try
+				{
+					fs.delete(hdfsOutputPath, recursive);
+				}
+				catch (Exception e)
+				{
+					Util.putStatusDebug(conf.get("statusUrl"), "Error",e.toString());
+				}
+			}
 		}
 	}
 }

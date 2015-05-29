@@ -62,12 +62,10 @@ public class Main
 	private void updateStatus(Job j)
 	{
 		//{"JobId":"12334","JobStat":"RUNNING","JobProgress":0.75}
+		//j.getJobID().toString(),
+		//j.getJobState().toString(),
 		try
 		{
-			String jsonContent= String.format("{\"uuid\":\"%s\",\"state\":\"%s\",\"info\":\"%s\"}",
-					j.getJobID().toString(),
-					j.getJobState().toString(),
-					"Running job on cluster");
 			//Util.runCommand(String.format("curl -d '%s' -H \"Content-Type: application/json\" %s",jsonContent,statusUrl));
 		}
 		catch(Exception e)
@@ -76,12 +74,6 @@ public class Main
 
 		}
 	}
-	
-	private void updateStatus(String state, String info)
-	{
-		Util.putStatus(this.statusUrl, state,info);
-	}
-	
 	private void deleteLocalJobDir()
 	{
 		
@@ -163,8 +155,7 @@ public class Main
 			
 		}
 		catch (Exception e) {
-			updateStatus("Failed",e.getMessage());
-			throw new Exception(e.getMessage());
+			Util.putStatusError(this.statusUrl, "Failed",e.getMessage());
 		}		
 		finally
 		{

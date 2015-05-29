@@ -8,7 +8,9 @@ import java.io.InputStreamReader;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -100,13 +102,20 @@ public class Util
 	/**
 	 * run a command and capture it's output as return value
 	 * 
+	 * @level:
+	 * CRITICAL 50
+	 * ERROR    40
+	 * WARNING  30
+	 * INFO    20
+	 * DEBUG   10
+	 * NOTSET  0
+	 * 
 	 * */
-	public static void putStatus(String statusUrl,String state,String info)
+	public static void putStatus(String statusUrl,String state,String info,int logLevel)
 	{
 		//curl -H 'Content-Type: application/json' -H 'Accept: application/json' -k -X PUT -d '{"progress":{"level":20,"message":"I am launching"},"state":"Running"}' URI
 		//String content = String.format("-d \"state=%s\" -d \"info=%s\"",state,info);
-		String content = String.format("-d '{\"state\":\"%s\",\"progress\": { \"level\":10, \"message\":\"%s\"}}'",info,state);
-		
+		String content = String.format("-d '{\"state\":\"%s\",\"progress\": { \"level\":%d, \"message\":\"%s\"}}'",state,logLevel,info);
 		if (statusUrl != null)
 		{
 			try
@@ -124,6 +133,27 @@ public class Util
 			System.err.println(content);
 		}
 		
+    }
+
+
+	public static void putStatusDebug(String statusUrl,String state,String info)
+	{
+		putStatus(statusUrl,state,info,10);
+    }
+	
+	public static void putStatusInfo(String statusUrl,String state,String info)
+	{
+		putStatus(statusUrl,state,info,20);
+    }
+
+	public static void putStatusWarning(String statusUrl,String state,String info)
+	{
+		putStatus(statusUrl,state,info,30);
+    }
+
+	public static void putStatusError(String statusUrl,String state,String info)
+	{
+		putStatus(statusUrl,state,info,40);
     }
 
 	public static String getCommonPrefix(String s1,String s2)
