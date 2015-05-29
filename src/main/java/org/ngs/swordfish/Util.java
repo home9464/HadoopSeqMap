@@ -101,17 +101,18 @@ public class Util
 	 * run a command and capture it's output as return value
 	 * 
 	 * */
-	public static void putStatus(String statusUrl, String state,String info)
+	public static void putStatus(String statusUrl,String state,String info)
 	{
 		//curl -H 'Content-Type: application/json' -H 'Accept: application/json' -k -X PUT -d '{"progress":{"level":20,"message":"I am launching"},"state":"Running"}' URI
-		String content = String.format("-d \"state=%s\" -d \"info=%s\"",state,info);
+		//String content = String.format("-d \"state=%s\" -d \"info=%s\"",state,info);
+		String content = String.format("-d '{\"state\":\"%s\",\"progress\": { \"level\":10, \"message\":\"%s\"}}'",info,state);
 		
 		if (statusUrl != null)
 		{
 			try
 			{
 				//System.err.println(String.format("curl -u %s:%s -X PUT -s %s %s",user,password,content,statusUrl));
-				//Util.command3(String.format("curl -H 'Content-Type: application/json' -H 'Accept: application/json' -k -s -X PUT %s %s",content,statusUrl));
+				Util.command3(String.format("curl -H 'Content-Type: application/json' -H 'Accept: application/json' -k -s -X PUT %s %s",content,statusUrl));
 			}
 			catch(Exception e)
 			{

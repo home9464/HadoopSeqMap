@@ -94,8 +94,7 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			{
 				//transfer outputs from DataNode to HDFS
 				Util.putStatus(conf.get("statusUrl"), 
-						"Running",
-						"Transfer output from "+output+" to "+hdfsOutputPath.toString());
+						"Running","Transfer output from "+output+" to "+hdfsOutputPath.toString());
 				fs.copyFromLocalFile(new Path(output), hdfsOutputPath);
 			}
 			
