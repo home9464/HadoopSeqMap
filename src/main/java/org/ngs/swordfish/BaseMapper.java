@@ -117,10 +117,19 @@ public class BaseMapper extends Mapper<Text, Text, NullWritable, NullWritable>
 			successed = true;
 			
 		}
+		catch (java.nio.channels.ClosedChannelException e)
+		{
+			Util.putStatusDebug(conf.get("statusUrl"),"Running",e.toString());
+			
+		}
+		catch (org.apache.commons.exec.ExecuteException e)
+		{
+			Util.putStatusDebug(conf.get("statusUrl"),"Running",e.toString());
+			
+		}
 		catch (Exception e)
 		{
 			Util.putStatusError(conf.get("statusUrl"),"Error",e.toString());
-			System.err.println("##ERROR##:"+e);
 		}
 		finally
 		{
